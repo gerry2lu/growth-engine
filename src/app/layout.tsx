@@ -1,9 +1,14 @@
 // app/layout.tsx
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
+import { Roboto } from "next/font/google";
 
-const inter = Inter({ subsets: ["latin"] });
+const bodyPrimary = Roboto({
+  weight: ["400", "500", "700"],
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Tweet Recommendation Engine",
@@ -17,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-gray-950 text-black`}>
+      <body className={`${bodyPrimary.className} bg-gray-950 text-black`}>
         <main className="min-h-screen p-4">{children}</main>
       </body>
     </html>

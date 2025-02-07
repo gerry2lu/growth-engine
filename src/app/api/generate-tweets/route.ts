@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     });
 
     // Create the prompt for the LLM using the fetched tweet texts
-    const prompt = `Given these recent tweets:\n${tweetTexts}\n\nGenerate 3 distinct, engaging tweets on similar topics using current trends. Format with each tweet separated by '||'`;
+    const prompt = `Given these recent tweets:\n${tweetTexts}\n\nGenerate 3 distinct, engaging tweets on similar topics using current trends. Do not use hashtags. Try reference and use real metrics. Format with each tweet separated by '||'`;
 
     // Generate completions using Anthropic's Messages API
     // Note: Adjust the model name if needed according to Anthropic's documentation.
