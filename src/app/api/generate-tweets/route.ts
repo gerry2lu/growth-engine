@@ -27,6 +27,7 @@ export async function POST(request: Request) {
     );
     twitterUrl.searchParams.append("query", searchQuery);
     twitterUrl.searchParams.append("tweet.fields", "public_metrics");
+    twitterUrl.searchParams.append("max_results", "25"); // TODO pull more tweets but filter poor quality ones
 
     // Make a direct HTTP request to Twitter API
     const twitterResponse = await fetch(twitterUrl.toString(), {
@@ -48,9 +49,15 @@ export async function POST(request: Request) {
       throw new Error("No tweet data returned from Twitter API");
     }
 
-    console.log("Tweets data:", tweetsData);
     // Extract tweet texts and join them with a separator
-    const tweetTexts = tweetsData.data.map((t: any) => t.text).join("\n---\n");
+    const tweetTexts = tweetsData.data
+      .map((t: any) => {
+        const metrics = t.public_metrics;
+        return `${t.text}\nRetweets: ${metrics.retweet_count}, Replies: ${metrics.reply_count}, Likes: ${metrics.like_count}, Impressions: ${metrics.impression_count}`;
+      })
+      .join("\n---\n");
+
+    console.log(tweetTexts);
 
     // Initialize Anthropic API client
     const anthropic = new Anthropic({
@@ -58,14 +65,14 @@ export async function POST(request: Request) {
     });
 
     // Create the prompt for the LLM using the fetched tweet texts
-    const prompt = `Given these recent tweets:\n${tweetTexts}\n\nGenerate 3 distinct, engaging tweets on similar topics using current trends. Do not use hashtags. Try reference and use real metrics. Format with each tweet separated by '||'`;
+    const prompt = `Given these recent tweets:\n${tweetTexts}\n\nGenerate 3 distinct tweets on ${searchQuery} which can result in high engagement. Convey a point/narrative with each tweet. Do not use hashtags. Reference real metrics from the given recent tweets such as player count, investments, percentage growth, or time frames. Do not reference the engagement metrics. Be short and punctual with each sentence. End each sentence with two new line characters. Format with each tweet separated by '||'`;
 
     // Generate completions using Anthropic's Messages API
     // Note: Adjust the model name if needed according to Anthropic's documentation.
     const completions = await Promise.all([
       anthropic.messages.create({
         model: "claude-3-5-haiku-20241022", // Use a supported model name
-        max_tokens: 200,
+        max_tokens: 250,
         messages: [{ role: "user", content: prompt }],
       }),
     ]);

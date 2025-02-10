@@ -24,6 +24,8 @@ export default function Home() {
             src="/immutablelogo.png"
             alt="Immutable X Logo"
             className="w-16"
+            width={64}
+            height={64}
           />
         </div>
         <h1 className="text-4xl font-bold text-center my-8 text-white w-full">
