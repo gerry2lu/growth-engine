@@ -49,7 +49,7 @@ type TwitterResponse = {
   data: Array<Trend>;
 };
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
     const twitterUrl = new URL("https://api.x.com/2/users/personalized_trends");
 

@@ -2,7 +2,6 @@
 "use client";
 import TweetGenerator from "@/components/TweetGenerator";
 import { useState } from "react";
-import Image from "next/image";
 
 export default function Home() {
   const [tweets, setTweets] = useState<string[]>([]);
