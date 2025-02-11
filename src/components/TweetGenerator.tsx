@@ -86,12 +86,27 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
   };
 
   const handleAddAsTopic = (trend_name: string) => {
-    if (!topics) {
-      setTopics(trend_name);
-      return;
-    } else {
-      setTopics((prev) => prev + ", " + trend_name);
+    // Take either the first four words unless there is a ":" character, then take all the words before it
+    const words = trend_name.split(" ");
+    // Check if there is a ":" character at the end of each word
+    let topic;
+
+    for (let i = 0; i < words.length; i++) {
+      if (words[i].endsWith(":")) {
+        // Remove the colon from the last word
+        words[i] = words[i].slice(0, -1);
+        topic = words.slice(0, i + 1).join(" ");
+        break;
+      } else if (i === 3) {
+        topic = words.slice(0, 4).join(" ");
+      }
     }
+
+    if (topic === undefined) {
+      topic = words[0];
+    }
+
+    setTopics(topic);
   };
 
   const handleCopyTweet = (tweet: string) => {

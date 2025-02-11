@@ -14,8 +14,8 @@ export default function Home() {
       <div className="absolute inset-0 bg-black opacity-60"></div>
 
       <div
-        className={`relative bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-10 shadow-lg ${
-          tweets.length > 0 ? "w-3/4" : "w-[50%]"
+        className={`relative bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-10 shadow-lg overflow-y-scroll max-h-full ${
+          tweets.length > 0 ? "w-[80%]" : "w-[50%]"
         }`}
       >
         <h1 className="text-4xl font-bold text-center mt-2 mb-6 text-white w-full">

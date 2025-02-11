@@ -22,9 +22,7 @@ export async function POST(request: Request) {
     const searchQuery = topics || "Web3 Gaming"; // Default query
 
     // Build the Twitter API URL
-    const twitterUrl = new URL(
-      "https://api.twitter.com/2/tweets/search/recent"
-    );
+    const twitterUrl = new URL("https://api.x.com/2/tweets/search/recent");
     twitterUrl.searchParams.append("query", searchQuery);
     twitterUrl.searchParams.append("tweet.fields", "public_metrics");
     twitterUrl.searchParams.append("max_results", "100");
