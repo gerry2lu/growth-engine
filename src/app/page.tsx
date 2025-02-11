@@ -16,19 +16,10 @@ export default function Home() {
 
       <div
         className={`relative bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-10 shadow-lg ${
-          tweets.length > 0 ? "w-3/4" : "w-1/3"
+          tweets.length > 0 ? "w-3/4" : "w-[50%]"
         }`}
       >
-        <div className="flex justify-center">
-          <Image
-            src="/immutablelogo.png"
-            alt="Immutable X Logo"
-            className="w-16"
-            width={64}
-            height={64}
-          />
-        </div>
-        <h1 className="text-4xl font-bold text-center my-8 text-white w-full">
+        <h1 className="text-4xl font-bold text-center mt-2 mb-6 text-white w-full">
           Tweet Recommendation
           <br />
           Engine

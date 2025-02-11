@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     );
     twitterUrl.searchParams.append("query", searchQuery);
     twitterUrl.searchParams.append("tweet.fields", "public_metrics");
-    twitterUrl.searchParams.append("max_results", "25"); // TODO pull more tweets but filter poor quality ones
+    twitterUrl.searchParams.append("max_results", "100");
 
     // Make a direct HTTP request to Twitter API
     const twitterResponse = await fetch(twitterUrl.toString(), {
@@ -49,8 +49,14 @@ export async function POST(request: Request) {
       throw new Error("No tweet data returned from Twitter API");
     }
 
-    // Extract tweet texts and join them with a separator
-    const tweetTexts = tweetsData.data
+    // Filter out tweets with less than 5 impressions or zero likes
+    const filteredTweets = tweetsData.data.filter((t: any) => {
+      const metrics = t.public_metrics;
+      return metrics.impression_count >= 5 && metrics.like_count > 0;
+    });
+
+    // Extract tweet texts with public metrics and join them with a separator
+    const tweetTexts = filteredTweets
       .map((t: any) => {
         const metrics = t.public_metrics;
         return `${t.text}\nRetweets: ${metrics.retweet_count}, Replies: ${metrics.reply_count}, Likes: ${metrics.like_count}, Impressions: ${metrics.impression_count}`;
@@ -65,7 +71,7 @@ export async function POST(request: Request) {
     });
 
     // Create the prompt for the LLM using the fetched tweet texts
-    const prompt = `Given these recent tweets:\n${tweetTexts}\n\nGenerate 3 distinct tweets on ${searchQuery} which can result in high engagement. Convey a point/narrative with each tweet. Do not use hashtags. Reference real metrics from the given recent tweets such as player count, investments, percentage growth, or time frames. Do not reference the engagement metrics. Be short and punctual with each sentence. End each sentence with two new line characters. Format with each tweet separated by '||'`;
+    const prompt = `Given these recent tweets:\n${tweetTexts}\n\nGenerate 3 distinct tweets on ${searchQuery} which can result in high engagement. Convey a point/narrative with each tweet. Do not use hashtags. Reference real metrics from the given recent tweets such as player count, investments, percentage growth, or time frames. Use terse, telegram-style writing that omits articles and pronouns - Example "launching march 2025." instead of "it is launching in march 2025.". Do not reference the engagement metrics. Use finite verbs. Be short and punctual with each sentence. End each sentence with two new line characters. Format with each tweet separated by '||'`;
 
     // Generate completions using Anthropic's Messages API
     // Note: Adjust the model name if needed according to Anthropic's documentation.
