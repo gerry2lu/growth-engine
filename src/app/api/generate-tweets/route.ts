@@ -12,6 +12,7 @@ interface GenerateTweetsRequest {
 // Define the response type
 interface GenerateTweetsResponse {
   tweets: string[];
+  referencedTweets: number;
 }
 
 export async function POST(request: Request) {
@@ -69,13 +70,13 @@ export async function POST(request: Request) {
     });
 
     // Create the prompt for the LLM using the fetched tweet texts
-    const prompt = `Given these recent tweets:\n${tweetTexts}\n\nGenerate 3 distinct tweets on ${searchQuery} which can result in high engagement. Convey a point/narrative with each tweet. Do not use hashtags. Reference real metrics from the given recent tweets such as player count, investments, percentage growth, or time frames. Use terse, telegram-style writing that omits articles and pronouns - Example "launching march 2025." instead of "it is launching in march 2025.". Do not reference the engagement metrics. Use finite verbs. Be short and punctual with each sentence. End each sentence with two new line characters. Format with each tweet separated by '||'`;
+    const prompt = `Given these recent tweets:\n${tweetTexts}\n\nGenerate 3 distinct tweets on ${searchQuery} which can result in high engagement. Convey a point/narrative with each tweet. Do not use hashtags. Reference real metrics from the given recent tweets such as player count, investments, percentage growth, or time frames. Do not reference the engagement metrics. Use finite verbs. Avoid using the -s form of the verb phrase (third person singular). Use present tense for the first sentence, then future tense for the remaining sentences  (present tense + the auxiliary "will" or "going to"). Be short and punctual with each sentence. End each sentence with two new line characters. Format with each tweet separated by '||'`;
 
     // Generate completions using Anthropic's Messages API
     // Note: Adjust the model name if needed according to Anthropic's documentation.
     const completions = await Promise.all([
       anthropic.messages.create({
-        model: "claude-3-5-haiku-20241022", // Use a supported model name
+        model: "claude-3-5-sonnet-20241022", // Use a supported model name
         max_tokens: 250,
         messages: [{ role: "user", content: prompt }],
       }),
@@ -104,6 +105,7 @@ export async function POST(request: Request) {
     // Return the first 3 tweets
     const response: GenerateTweetsResponse = {
       tweets: allTweets.slice(0, 3),
+      referencedTweets: filteredTweets.length,
     };
 
     return NextResponse.json(response);

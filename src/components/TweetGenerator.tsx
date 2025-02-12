@@ -17,6 +17,7 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
   const [topics, setTopics] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [trends, setTrends] = useState<Trend[]>([]);
+  const [referencedTweetCount, setReferencedTweetCount] = useState<number>(0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +39,7 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
       // Remove the first line from the first tweet
       data.tweets[0] = removeTweetHeader(data.tweets[0]);
 
+      setReferencedTweetCount(data.referencedTweets);
       setTweets(data.tweets);
     } catch (error) {
       console.error("Error generating tweets:", error);
@@ -185,9 +187,12 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
 
           {tweets.length > 0 && (
             <>
-              <h1 className="text-2xl text-white py-3 font-bold mt-2">
+              <h1 className="text-2xl text-white pt-3 font-bold mt-2">
                 Tweet Recommendations
               </h1>
+              <p className=" inline-block text-gray-400 text-sm pt-1 pb-2 italic">
+                Based on {referencedTweetCount} tweets
+              </p>
               <div className="flex space-x-6 overflow-x-auto">
                 {tweets.map((tweet, index) => (
                   <div
