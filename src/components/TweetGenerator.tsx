@@ -157,7 +157,7 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
                 {trends.map((trend, index) => (
                   <div
                     key={index}
-                    className="px-4 py-3 border-[1px] rounded-xl text-white bg-black bg-opacity-50 backdrop-blue-sm min-w-[200px]"
+                    className="px-4 py-3 border-[1px] rounded-xl text-white bg-black bg-opacity-50 backdrop-blue-sm min-w-[210px]"
                   >
                     <div className="flex justify-between flex-col h-full">
                       <div>
@@ -175,7 +175,7 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
                           className="py-1 bg-white text-center px-2 rounded-xl text-black text-xs font-bold hover:bg-slate-200 text-nowrap"
                           onClick={() => handleAddAsTopic(trend.trend_name)}
                         >
-                          + Add as topic
+                          + Add topic
                         </button>
                       </div>
                     </div>
@@ -190,14 +190,14 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
               <h1 className="text-2xl text-white pt-3 font-bold mt-2">
                 Tweet Recommendations
               </h1>
-              <p className=" inline-block text-gray-400 text-sm pt-1 pb-2 italic">
-                Based on {referencedTweetCount} tweets
+              <p className=" inline-block text-gray-300 text-sm pb-3 italic">
+                Based on {referencedTweetCount} high engagement tweets found
               </p>
               <div className="flex space-x-6 overflow-x-auto">
                 {tweets.map((tweet, index) => (
                   <div
                     key={index}
-                    className="p-4 border rounded-xl bg-gray-50 min-w-[200px]"
+                    className="p-4 border rounded-xl bg-gray-50 min-w-[300px] flex flex-col justify-between"
                   >
                     <p className="whitespace-pre-wrap">{tweet}</p>
                     <button
