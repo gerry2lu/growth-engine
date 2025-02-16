@@ -10,10 +10,11 @@ import { Trend } from "@/app/api/get-trends/route";
 type TweetGeneratorProps = {
   tweets: string[];
   setTweets: (tweets: string[]) => void;
+  isImmutable?: boolean;
 };
 
 const TweetGenerator = (props: TweetGeneratorProps) => {
-  const { tweets, setTweets } = props;
+  const { tweets, setTweets, isImmutable } = props;
   const [topics, setTopics] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [trends, setTrends] = useState<Trend[]>([]);
@@ -81,6 +82,7 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!isImmutable) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e as unknown as React.FormEvent);
@@ -117,7 +119,7 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
   };
 
   return (
-    <div className="mx-auto p-4">
+    <div className="mx-auto p-4" suppressHydrationWarning>
       {loading ? (
         <LoadingSpinner />
       ) : (
@@ -130,23 +132,30 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
               placeholder="Enter topic (e.g., AI, Memecoins, Web3)... Default is Web3 Gaming"
               className="w-full p-2 border rounded-lg outline-none text-black"
             />
-            <div className="flex gap-4 flex-wrap">
-              <button
-                type="submit"
-                disabled={loading}
-                className="bg-black text-white px-5 py-3 rounded-3xl disabled:opacity-50 flex items-center space-x-2 hover:bg-gray-900"
-              >
-                <RiAiGenerate className="mr-2 h-5 w-5" /> Generate Tweets
-              </button>
-              <button
-                onClick={getTrends}
-                disabled={loading}
-                className="bg-gray-100 text-black px-5 py-2 rounded-3xl disabled:opacity-50 flex items-center space-x-2 border-2 border-black hover:bg-gray-200"
-              >
-                <PiTrendUpLight className="mr-2 h-5 w-5" /> Get Trend
-                Suggestions
-              </button>
-            </div>
+            {isImmutable && (
+              <div className="flex gap-4 flex-wrap">
+                <button
+                  onClick={getTrends}
+                  disabled={loading}
+                  className="bg-gray-100 text-black px-5 py-2 rounded-3xl disabled:opacity-50 flex items-center space-x-2 border-2 border-gray-100 hover:border-purple-600 hover:bg-gray-200"
+                >
+                  <PiTrendUpLight className="mr-2 h-5 w-5" /> Get Trend
+                  Suggestions
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="bg-black text-white px-5 py-3 rounded-3xl disabled:opacity-50 flex items-center space-x-2 hover:bg-gray-900"
+                >
+                  <RiAiGenerate className="mr-2 h-5 w-5" /> Generate Tweets
+                </button>
+              </div>
+            )}
+            {!isImmutable && (
+              <div className="bg-purple-300 rounded-xl p-3 text-black text-center italic">
+                Sign in with an authorised account to continue
+              </div>
+            )}
           </form>
           {trends.length > 0 && (
             <>
