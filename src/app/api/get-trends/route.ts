@@ -77,10 +77,8 @@ export async function POST() {
           },
         });
 
-        const filteredTrends = trendsData.filter(
-          (trend) =>
-            trendsWhiteList.includes(trend.category) &&
-            trend.post_count.includes("K")
+        const filteredTrends = trendsData.filter((trend) =>
+          trendsWhiteList.includes(trend.category)
         );
 
         return NextResponse.json(filteredTrends);
@@ -107,6 +105,19 @@ export async function POST() {
           },
         },
       });
+
+      // if trend exists update the post_count and trending_since
+      if (existingTrend) {
+        await prisma.trends.update({
+          where: {
+            id: existingTrend.id,
+          },
+          data: {
+            post_count: trend.post_count,
+            trending_since: trend.trending_since,
+          },
+        });
+      }
 
       if (!existingTrend) {
         newTrends.push({
@@ -142,11 +153,9 @@ export async function POST() {
       },
     });
 
-    // Filter the trends to only include whitelisted categories
-    const filteredTrends = allTrendsToday.filter(
-      (trend) =>
-        trendsWhiteList.includes(trend.category) &&
-        trend.post_count.includes("K")
+    // Filter the trends
+    const filteredTrends = allTrendsToday.filter((trend) =>
+      trendsWhiteList.includes(trend.category)
     );
 
     return NextResponse.json(filteredTrends);
