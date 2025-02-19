@@ -39,6 +39,18 @@ export default function Home() {
     }
   }, [email]);
 
+  // const testDailySlackUpdate = async () => {
+  //   const response = await fetch("/api/send-slack-update");
+  //   const data = await response.json();
+  //   console.log(data);
+  // };
+
+  // const testRefreshTokens = async () => {
+  //   const response = await fetch("/api/refresh-tokens");
+  //   const data = await response.json();
+  //   console.log(data);
+  // };
+
   return (
     <div
       className="relative h-screen flex justify-center items-center bg-cover bg-center"
@@ -49,6 +61,12 @@ export default function Home() {
           isAuthenticated={isAuthenticated}
           setIsAuthenticated={setIsAuthenticated}
         />
+        {/* <button
+          onClick={testRefreshTokens}
+          className="bg-white mt-2 text-black py-2 px-4 rounded-3xl hover:bg-gray-300"
+        >
+          Test Refresh Tokens
+        </button> */}
         {/* {email && (
           <p className="text-gray-300 mt-2 ml-2 text-xs max-w-20">
             Signed in as {email}

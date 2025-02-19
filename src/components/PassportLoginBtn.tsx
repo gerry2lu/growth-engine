@@ -2,6 +2,8 @@
 "use client";
 
 import { passportInstance } from "@/utils/setupDefault";
+import Image from "next/image";
+
 export type PassportLoginButtonProps = {
   isAuthenticated: boolean;
   setIsAuthenticated: (isAuthenticated: boolean) => void;
@@ -47,7 +49,7 @@ export default function PassportLoginButton(props: PassportLoginButtonProps) {
         onClick={logout}
         className="flex items-center bg-gray-100 text-black py-3 px-12 rounded-3xl cursor-pointer hover:border-purple-600 border-2 border-gray-100"
       >
-        <img
+        <Image
           src="/passportWallet.png"
           alt="Passport Wallet"
           className="w-7 h-7 mr-2"
@@ -62,7 +64,7 @@ export default function PassportLoginButton(props: PassportLoginButtonProps) {
       onClick={handleLogin}
       className="flex items-center bg-gray-100 text-black py-2 px-4 rounded-3xl cursor-pointer hover:border-purple-600 border-2 border-gray-100"
     >
-      <img
+      <Image
         src="/passportWallet.png"
         alt="Passport Wallet"
         className="w-7 h-7 mr-2"

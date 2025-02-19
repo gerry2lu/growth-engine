@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { getAccessToken } from "@/utils/getAccessToken";
+import { trendsWhiteList } from "@/utils/getTrendsWhiteList";
 
 const prisma = new PrismaClient();
 
@@ -53,9 +55,11 @@ export async function POST() {
   try {
     const twitterUrl = new URL("https://api.x.com/2/users/personalized_trends");
 
+    const access_token = await getAccessToken();
+
     const twitterResponse = await fetch(twitterUrl.toString(), {
       headers: {
-        Authorization: `Bearer ${process.env.TWITTER_BEARER_TOKEN}`,
+        Authorization: `Bearer ${access_token}`,
       },
     });
 
@@ -73,7 +77,13 @@ export async function POST() {
           },
         });
 
-        return NextResponse.json(trendsData);
+        const filteredTrends = trendsData.filter(
+          (trend) =>
+            trendsWhiteList.includes(trend.category) &&
+            trend.post_count.includes("K")
+        );
+
+        return NextResponse.json(filteredTrends);
       } else {
         throw new Error(
           `Twitter API error: ${twitterResponse.status} ${twitterResponse.statusText}`
@@ -132,7 +142,14 @@ export async function POST() {
       },
     });
 
-    return NextResponse.json(allTrendsToday);
+    // Filter the trends to only include whitelisted categories
+    const filteredTrends = allTrendsToday.filter(
+      (trend) =>
+        trendsWhiteList.includes(trend.category) &&
+        trend.post_count.includes("K")
+    );
+
+    return NextResponse.json(filteredTrends);
   } catch (error) {
     console.error(error);
     return NextResponse.json(

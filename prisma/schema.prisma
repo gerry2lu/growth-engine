@@ -18,3 +18,11 @@ model Trends {
   post_count String
   trending_since String
 }
+
+model Xauth {
+  id Int @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  access_token String
+  refresh_token String
+  has_expired Boolean
+}
