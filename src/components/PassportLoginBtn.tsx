@@ -53,6 +53,8 @@ export default function PassportLoginButton(props: PassportLoginButtonProps) {
           src="/passportWallet.png"
           alt="Passport Wallet"
           className="w-7 h-7 mr-2"
+          width={28}
+          height={28}
         />
         Sign out
       </button>
@@ -68,6 +70,8 @@ export default function PassportLoginButton(props: PassportLoginButtonProps) {
         src="/passportWallet.png"
         alt="Passport Wallet"
         className="w-7 h-7 mr-2"
+        width={28}
+        height={28}
       />
       Sign in with Immutable
     </button>

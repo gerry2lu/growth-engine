@@ -40,12 +40,10 @@ async function getDailyTrends() {
     orderBy: {
       createdAt: "desc",
     },
-    take: 20,
   });
 
-  const filteredTrends = trends.filter(
-    (trend) =>
-      trendsWhiteList.includes(trend.category) && trend.post_count.includes("K")
+  const filteredTrends = trends.filter((trend) =>
+    trendsWhiteList.includes(trend.category)
   );
 
   return filteredTrends;
@@ -192,6 +190,11 @@ async function sendSlackMessage() {
 
   const trends = await getDailyTrends();
   const trendAnalysis = await analyzeTrends(trends);
+
+  if (trends.length === 0 || trendAnalysis.length === 0) {
+    console.warn("No trends found for today");
+    return;
+  }
 
   // Format the current date
   const currentDate = new Date().toLocaleDateString("en-US", {

@@ -26,3 +26,9 @@ model Xauth {
   refresh_token String
   has_expired Boolean
 }
+
+model ImmutablePosts {
+  post_id String @id
+  createdAt DateTime @default(now())
+  is_analyzed Boolean
+}

@@ -37,7 +37,7 @@ export default function Home() {
     } else {
       setIsImmutable(false);
     }
-  }, [email]);
+  }, [email, isAuthenticated]);
 
   // const testDailySlackUpdate = async () => {
   //   const response = await fetch("/api/send-slack-update");
@@ -47,6 +47,12 @@ export default function Home() {
 
   // const testRefreshTokens = async () => {
   //   const response = await fetch("/api/refresh-tokens");
+  //   const data = await response.json();
+  //   console.log(data);
+  // };
+
+  // const testGetEngagement = async () => {
+  //   const response = await fetch("/api/get-engagement");
   //   const data = await response.json();
   //   console.log(data);
   // };
@@ -62,10 +68,10 @@ export default function Home() {
           setIsAuthenticated={setIsAuthenticated}
         />
         {/* <button
-          onClick={testRefreshTokens}
+          onClick={testGetEngagement}
           className="bg-white mt-2 text-black py-2 px-4 rounded-3xl hover:bg-gray-300"
         >
-          Test Refresh Tokens
+          Test Get Engagement
         </button> */}
         {/* {email && (
           <p className="text-gray-300 mt-2 ml-2 text-xs max-w-20">
