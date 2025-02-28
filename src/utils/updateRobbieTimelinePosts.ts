@@ -6,11 +6,11 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient({ log: ["query", "info", "warn", "error"] }); // Enable Prisma logs
 
-export async function updateTimelinePosts(userId: string): Promise<void> {
+export async function updateRobbieTimelinePosts(userId: string): Promise<void> {
   const access_token = await getAccessToken();
 
-  // Set the start date to February 12, 2025
-  const startTime = "2025-02-20T00:00:00Z";
+  // Set the start date to February 1, 2025
+  const startTime = "2025-02-01T00:00:00Z";
 
   let allTweets: any[] = [];
   let nextToken: string | undefined = undefined;
@@ -80,7 +80,7 @@ export async function updateTimelinePosts(userId: string): Promise<void> {
 
       const tweetId = tweet.id;
 
-      const existingTweet = await prisma.immutablePosts.findUnique({
+      const existingTweet = await prisma.robbiePosts.findUnique({
         where: { post_id: tweetId },
       });
       console.log("Existing Tweet:", existingTweet);
@@ -91,7 +91,7 @@ export async function updateTimelinePosts(userId: string): Promise<void> {
           createdAt: new Date(tweet.created_at),
           is_analyzed: false,
         });
-        await prisma.immutablePosts.create({
+        await prisma.robbiePosts.create({
           data: {
             post_id: tweetId,
             createdAt: new Date(tweet.created_at),

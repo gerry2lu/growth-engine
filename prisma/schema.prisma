@@ -32,3 +32,9 @@ model ImmutablePosts {
   createdAt DateTime @default(now())
   is_analyzed Boolean
 }
+
+model RobbiePosts {
+  post_id String @id
+  createdAt DateTime @default(now())
+  is_analyzed Boolean
+}

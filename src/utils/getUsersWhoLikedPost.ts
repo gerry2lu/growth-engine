@@ -1,8 +1,12 @@
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 
 import { getAccessToken } from "./getAccessToken";
+import { getRobbieOAuthHeader } from "./authRobbie";
 
-export async function getUsersWhoLikedPost(postId: string): Promise<string[]> {
+export async function getUsersWhoLikedPost(
+  postId: string,
+  isRobbie: boolean
+): Promise<string[]> {
   const accessToken = await getAccessToken();
 
   if (!accessToken) {
@@ -37,7 +41,19 @@ export async function getUsersWhoLikedPost(postId: string): Promise<string[]> {
         params.set("pagination_token", paginationToken);
       }
 
-      const response = await fetch(`${url}?${params.toString()}`, options);
+      const URL = `${url}?${params.toString()}`;
+
+      let response;
+      if (isRobbie) {
+        const authHeader = getRobbieOAuthHeader(URL, "GET");
+
+        response = await fetch(URL, {
+          method: "GET",
+          headers: { ...authHeader, "Content-Type": "application/json" },
+        });
+      } else {
+        response = await fetch(URL, options);
+      }
 
       if (!response.ok) {
         throw new Error(

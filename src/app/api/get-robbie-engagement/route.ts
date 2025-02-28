@@ -1,20 +1,25 @@
 import { NextResponse } from "next/server";
-// import { updateTimelinePosts } from "@/utils/updateTimelinePosts";
 import { PrismaClient } from "@prisma/client";
 import { getUsersWhoLikedPost } from "@/utils/getUsersWhoLikedPost";
 import { findMatchingUsers } from "@/utils/getMatchingKOLs";
 import { addCheckboxColumn } from "@/utils/addCheckboxColumn";
+// import { updateRobbieTimelinePosts } from "@/utils/updateRobbieTimelinePosts";
 
 const prisma = new PrismaClient();
 
 export async function GET() {
-  //   const userId = "1233171399872638976"; // WILL CONVERT TO ENV VARIABLE
+  const userId = process.env.ROBBIE_X_ID;
 
+  if (userId === undefined) {
+    return NextResponse.json(
+      { success: false, message: "ROBBIE_X_ID environment variable not set" },
+      { status: 500 }
+    );
+  }
   try {
-    // await updateTimelinePosts(userId);
+    // await updateRobbieTimelinePosts(userId);
 
-    // Take the oldest Immutable post from the database which has not been analyzed
-    const oldestUnanalyzedPost = await prisma.immutablePosts.findFirst({
+    const oldestUnanalyzedPost = await prisma.robbiePosts.findFirst({
       where: {
         is_analyzed: false,
       },
@@ -31,11 +36,10 @@ export async function GET() {
     }
 
     const postId = oldestUnanalyzedPost.post_id;
-    const postURL = "https://x.com/Immutable/status/" + postId;
+    const postURL = "https://x.com/0xferg/status/" + postId;
     const postDate = oldestUnanalyzedPost.createdAt;
 
-    // Get users who liked the post
-    const usersWhoLikedPost = await getUsersWhoLikedPost(postId, false);
+    const usersWhoLikedPost = await getUsersWhoLikedPost(postId, true);
 
     if (!usersWhoLikedPost) {
       return NextResponse.json(
@@ -44,20 +48,15 @@ export async function GET() {
       );
     }
 
-    // Match users to influencers as indicies
     const matchedUserIndicies = await findMatchingUsers(usersWhoLikedPost);
-
-    console.log("Matched users:", matchedUserIndicies);
 
     if (matchedUserIndicies.length === 0) {
       console.log("No matching users found");
     }
 
-    // Add data to spreadsheet
-    await addCheckboxColumn(matchedUserIndicies, postURL, false, postDate);
+    await addCheckboxColumn(matchedUserIndicies, postURL, true, postDate);
 
-    // Update the post as analyzed
-    await prisma.immutablePosts.update({
+    await prisma.robbiePosts.update({
       where: {
         post_id: postId,
       },
@@ -71,9 +70,9 @@ export async function GET() {
       message: "Success",
     });
   } catch (error) {
-    console.error("Error fetching user timeline:", error);
+    console.error("Error getting engagement:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to fetch user timeline" },
+      { success: false, message: "Failed to get engagement" },
       { status: 500 }
     );
   }

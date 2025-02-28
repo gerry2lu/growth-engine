@@ -26,6 +26,14 @@ const DEFAULT_CONFIG: CheckboxColumnConfig = {
   columnLetter: "C",
 };
 
+const ROBBIE_CONFIG: CheckboxColumnConfig = {
+  spreadsheetName: "[Growth] Inner Circle Engagement Tracker",
+  worksheetName: "RobbieScriptAuto",
+  newColumnName: "",
+  placement: "after_column",
+  columnLetter: "C",
+};
+
 const normalizedPrivateKey = (
   process.env.PRIVATE_KEY ?? throwError("PRIVATE_KEY")
 ).replace(/\\n/g, "\n");
@@ -51,9 +59,16 @@ const credentials = {
 export async function addCheckboxColumn(
   checkedRows: number[],
   tweetUrl: string,
-  config: Partial<CheckboxColumnConfig> = {}
+  isRobbie: boolean,
+  postDate: Date
 ): Promise<void> {
-  const finalConfig = { ...DEFAULT_CONFIG, ...config };
+  let finalConfig: CheckboxColumnConfig;
+
+  if (isRobbie) {
+    finalConfig = { ...ROBBIE_CONFIG };
+  } else {
+    finalConfig = { ...DEFAULT_CONFIG };
+  }
 
   try {
     const auth = new JWT({
@@ -130,6 +145,18 @@ export async function addCheckboxColumn(
 
     const headerCell = worksheet.getCell(0, columnIndex - 1);
     headerCell.value = finalConfig.newColumnName;
+
+    // Format the date as MMM DD YYYY
+    const formattedDate = postDate.toLocaleDateString("en-US", {
+      month: "short", // "MMM"
+      day: "2-digit", // "DD"
+      year: "numeric", // "YYYY"
+    });
+
+    // Add the formatted date to row 1 (index 1)
+    const dateCell = worksheet.getCell(1, columnIndex - 1);
+    dateCell.value = formattedDate;
+
     const urlCell = worksheet.getCell(2, columnIndex - 1);
     urlCell.value = tweetUrl;
 
