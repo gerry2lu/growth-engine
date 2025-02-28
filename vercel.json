@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/send-slack-update",
-      "schedule": "0 23 * * *"
+      "schedule": "0 */2 * * *"
     },
     {
       "path": "/api/refresh-tokens",
@@ -14,7 +14,7 @@
     },
     {
       "path": "/api/get-trends",
-      "schedule": "30 22 * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/get-engagement",

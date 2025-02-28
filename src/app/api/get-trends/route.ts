@@ -51,7 +51,7 @@ type TwitterResponse = {
   data: Array<Trend>;
 };
 
-export async function POST() {
+export async function GET() {
   try {
     const twitterUrl = new URL("https://api.x.com/2/users/personalized_trends");
 
@@ -125,6 +125,7 @@ export async function POST() {
           category: trend.category,
           post_count: trend.post_count,
           trending_since: trend.trending_since,
+          isSlackNotified: false,
         });
       }
     }

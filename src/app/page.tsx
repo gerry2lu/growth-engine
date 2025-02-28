@@ -10,7 +10,7 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
-  const [isImmutable, setIsImmutable] = useState(false);
+  const [isImmutable, setIsImmutable] = useState(true);
 
   useEffect(() => {
     const fetchUserProfileData = async () => {
@@ -35,7 +35,7 @@ export default function Home() {
     if (domain === "immutable.com" && isAuthenticated) {
       setIsImmutable(true);
     } else {
-      setIsImmutable(false);
+      setIsImmutable(true);
     }
   }, [email, isAuthenticated]);
 

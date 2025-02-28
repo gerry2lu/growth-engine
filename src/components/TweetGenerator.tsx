@@ -63,7 +63,7 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
       setLoading(true);
 
       const response = await fetch("/api/get-trends", {
-        method: "POST",
+        method: "GET",
         headers: { "Content-Type": "application/json" },
       });
 

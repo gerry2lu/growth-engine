@@ -27,15 +27,17 @@ export async function GET() {
   }
 }
 
-async function getDailyTrends() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+async function getRecentTrends() {
+  // Get trends from the past 2 hours
+  const twoHoursAgo = new Date();
+  twoHoursAgo.setHours(twoHoursAgo.getHours() - 2);
 
   const trends = await prisma.trends.findMany({
     where: {
       createdAt: {
-        gte: today,
+        gte: twoHoursAgo,
       },
+      isSlackNotified: false,
     },
     orderBy: {
       createdAt: "desc",
@@ -188,15 +190,15 @@ async function sendSlackMessage() {
     throw new Error("Missing Slack configuration");
   }
 
-  const trends = await getDailyTrends();
+  const trends = await getRecentTrends();
   const trendAnalysis = await analyzeTrends(trends);
 
   if (trends.length === 0 || trendAnalysis.length === 0) {
-    console.warn("No trends found for today");
+    console.warn("No new trends found in the last 2 hours");
     return;
   }
 
-  // Format the current date
+  // Current date and time
   const currentDate = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -211,7 +213,7 @@ async function sendSlackMessage() {
         type: "header",
         text: {
           type: "plain_text",
-          text: `📊 Daily Trend Analysis - ${currentDate}`,
+          text: `🔔 New Trends Detected - ${currentDate}`,
           emoji: true,
         },
       },
@@ -222,7 +224,7 @@ async function sendSlackMessage() {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: "_Here's your daily analysis of trending topics_",
+          text: "_New trending topics from the last 2 hours_",
         },
       },
       {
@@ -281,6 +283,14 @@ async function sendSlackMessage() {
 
   if (!data.ok) {
     throw new Error(`Slack API error: ${data.error}`);
+  }
+
+  // Update all trends that were sent to have isSlackNotified = true
+  for (const trend of trends) {
+    await prisma.trends.update({
+      where: { id: trend.id },
+      data: { isSlackNotified: true },
+    });
   }
 
   return data;

@@ -17,6 +17,7 @@ model Trends {
   category String
   post_count String
   trending_since String
+  isSlackNotified Boolean @default(false)
 }
 
 model Xauth {
