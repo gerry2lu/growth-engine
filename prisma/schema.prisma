@@ -38,4 +38,8 @@ model RobbiePosts {
   post_id String @id
   createdAt DateTime @default(now())
   is_analyzed Boolean
+  is_added_to_spreadsheet Boolean @default(false)
+  link String @default("")
+  likes Int @default(-1)
+  text String @default("")
 }

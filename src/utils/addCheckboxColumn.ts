@@ -2,13 +2,13 @@ import { GoogleSpreadsheet } from "google-spreadsheet";
 import { JWT } from "google-auth-library";
 import { sheets_v4, drive_v3 } from "googleapis";
 
-interface CheckboxColumnConfig {
+type CheckboxColumnConfig = {
   spreadsheetName: string;
   worksheetName: string;
   newColumnName: string;
   placement: "end" | "start" | "after_column";
   columnLetter?: string;
-}
+};
 
 function throwError(message: string): never {
   console.log(
@@ -34,11 +34,11 @@ const ROBBIE_CONFIG: CheckboxColumnConfig = {
   columnLetter: "C",
 };
 
-const normalizedPrivateKey = (
+export const normalizedPrivateKey = (
   process.env.PRIVATE_KEY ?? throwError("PRIVATE_KEY")
 ).replace(/\\n/g, "\n");
 
-const credentials = {
+export const credentials = {
   type: process.env.TYPE ?? throwError("TYPE"),
   project_id: process.env.PROJECT_ID ?? throwError("PROJECT_ID"),
   private_key_id: process.env.PRIVATE_KEY_ID ?? throwError("PRIVATE_KEY_ID"),

@@ -1,16 +1,18 @@
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 
 // utils/updateTimelinePosts.ts
-import { getAccessToken } from "./getAccessToken";
+// import { getAccessToken } from "./getAccessToken";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient({ log: ["query", "info", "warn", "error"] }); // Enable Prisma logs
 
 export async function updateRobbieTimelinePosts(userId: string): Promise<void> {
-  const access_token = await getAccessToken();
+  const access_token = process.env.R_BEARER_TOKEN;
 
-  // Set the start date to February 1, 2025
-  const startTime = "2025-02-01T00:00:00Z";
+  // Set the start time as 14 days ago
+  const startTime = new Date(
+    Date.now() - 14 * 24 * 60 * 60 * 1000
+  ).toISOString();
 
   let allTweets: any[] = [];
   let nextToken: string | undefined = undefined;
@@ -28,8 +30,8 @@ export async function updateRobbieTimelinePosts(userId: string): Promise<void> {
       const baseUrl = `https://api.x.com/2/users/${userId}/tweets`;
       const queryParams = new URLSearchParams({
         exclude: "retweets,replies",
-        "tweet.fields": "created_at,text",
-        max_results: "100",
+        "tweet.fields": "created_at,text,public_metrics",
+        max_results: "50",
         start_time: startTime,
       });
 
@@ -79,11 +81,22 @@ export async function updateRobbieTimelinePosts(userId: string): Promise<void> {
       console.log("Tweet ID:", tweet.id);
 
       const tweetId = tweet.id;
+      const tweetLink = `https://x.com/0xferg/status/${tweetId}`;
+      const likes = tweet.public_metrics.like_count;
+      const text = tweet.text;
 
       const existingTweet = await prisma.robbiePosts.findUnique({
         where: { post_id: tweetId },
       });
-      console.log("Existing Tweet:", existingTweet);
+
+      // Update the likes of existing tweets
+      if (existingTweet) {
+        await prisma.robbiePosts.update({
+          where: { post_id: tweetId },
+          data: { likes: likes, text: text, link: tweetLink },
+        });
+        console.log("Tweet updated successfully:", tweetId);
+      }
 
       if (!existingTweet) {
         console.log("Creating new tweet with data:", {
@@ -96,6 +109,10 @@ export async function updateRobbieTimelinePosts(userId: string): Promise<void> {
             post_id: tweetId,
             createdAt: new Date(tweet.created_at),
             is_analyzed: false,
+            link: tweetLink,
+            likes: likes,
+            text: text,
+            is_added_to_spreadsheet: false,
           },
         });
         console.log("Tweet created successfully:", tweetId);

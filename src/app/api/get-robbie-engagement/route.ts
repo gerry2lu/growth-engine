@@ -3,7 +3,6 @@ import { PrismaClient } from "@prisma/client";
 import { getUsersWhoLikedPost } from "@/utils/getUsersWhoLikedPost";
 import { findMatchingUsers } from "@/utils/getMatchingKOLs";
 import { addCheckboxColumn } from "@/utils/addCheckboxColumn";
-// import { updateRobbieTimelinePosts } from "@/utils/updateRobbieTimelinePosts";
 
 const prisma = new PrismaClient();
 
@@ -18,6 +17,12 @@ export async function GET() {
   }
   try {
     // await updateRobbieTimelinePosts(userId);
+    // await addRobbieTweetRow(
+    //   "https://x.com/0xferg/status/1899053872074670193",
+    //   173,
+    //   new Date()
+    // );
+    // await updateRobbieRatings();
 
     const oldestUnanalyzedPost = await prisma.robbiePosts.findFirst({
       where: {

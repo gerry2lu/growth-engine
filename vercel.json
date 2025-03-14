@@ -23,6 +23,10 @@
     {
       "path": "/api/get-robbie-engagement",
       "schedule": "*/20 * * * *"
+    },
+    {
+      "path": "/api/update-robbie-scripts",
+      "schedule": "0 7 * * 4"
     }
   ]
 }
