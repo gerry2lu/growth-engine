@@ -89,14 +89,11 @@ function prepareSearchQuery(trendName: string): string {
 async function fetchTrendTweets(searchQuery: string): Promise<string | null> {
   const access_token = await getAccessToken();
 
-  const fetchTweets = async (nextToken?: string) => {
+  const fetchTweets = async () => {
     const twitterUrl = new URL("https://api.x.com/2/tweets/search/recent");
     twitterUrl.searchParams.append("query", searchQuery);
     twitterUrl.searchParams.append("tweet.fields", "public_metrics");
     twitterUrl.searchParams.append("max_results", "100");
-    if (nextToken) {
-      twitterUrl.searchParams.append("next_token", nextToken);
-    }
 
     const twitterResponse = await fetch(twitterUrl.toString(), {
       headers: {

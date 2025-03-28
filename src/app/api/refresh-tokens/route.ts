@@ -10,14 +10,7 @@ type TokenResponse = {
   expires_in: number;
 };
 
-export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return new Response("Unauthorized", {
-      status: 401,
-    });
-  }
-
+export async function GET() {
   try {
     const [accessToken, refreshToken] = await refreshAccessToken();
     return NextResponse.json({

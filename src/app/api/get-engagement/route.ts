@@ -8,7 +8,7 @@ import { addCheckboxColumn } from "@/utils/addCheckboxColumn";
 const prisma = new PrismaClient();
 
 export async function GET() {
-  //   const userId = "1233171399872638976"; // WILL CONVERT TO ENV VARIABLE
+  // const userId = "1233171399872638976"; // WILL CONVERT TO ENV VARIABLE
 
   try {
     // await updateTimelinePosts(userId);

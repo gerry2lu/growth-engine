@@ -9,8 +9,8 @@ const prisma = new PrismaClient({ log: ["query", "info", "warn", "error"] }); //
 export async function updateTimelinePosts(userId: string): Promise<void> {
   const access_token = await getAccessToken();
 
-  // Set the start date to February 12, 2025
-  const startTime = "2025-02-25T00:00:00Z";
+  // Set the start date to March 4, 2025
+  const startTime = "2025-03-04T00:00:00Z";
 
   let allTweets: any[] = [];
   let nextToken: string | undefined = undefined;
