@@ -28,14 +28,14 @@ export async function GET() {
 }
 
 async function getRecentTrends() {
-  // Get trends from the past 2 hours
-  const twoHoursAgo = new Date();
-  twoHoursAgo.setHours(twoHoursAgo.getHours() - 2);
+  // Get trends from the past 12 hours
+  const twelveHoursAgo = new Date();
+  twelveHoursAgo.setHours(twelveHoursAgo.getHours() - 12);
 
   const trends = await prisma.trends.findMany({
     where: {
       createdAt: {
-        gte: twoHoursAgo,
+        gte: twelveHoursAgo,
       },
       isSlackNotified: false,
     },
@@ -44,9 +44,13 @@ async function getRecentTrends() {
     },
   });
 
+  console.log("All trends:", trends);
+
   const filteredTrends = trends.filter((trend) =>
     trendsWhiteList.includes(trend.category)
   );
+
+  console.log("Filtered trends:", filteredTrends);
 
   return filteredTrends;
 }
@@ -182,6 +186,7 @@ async function generateTweetSummary(
 async function sendSlackMessage() {
   const token = process.env.SLACK_BOT_TOKEN;
   const channelId = process.env.SLACK_CHANNEL_ID;
+  console.log(token, channelId);
 
   if (!token || !channelId) {
     throw new Error("Missing Slack configuration");

@@ -43,3 +43,11 @@ model RobbiePosts {
   likes Int @default(-1)
   text String @default("")
 }
+
+model SystemPrompts {
+  id Int @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  name String @unique
+  prompt String
+}
+  

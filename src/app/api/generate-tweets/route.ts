@@ -3,97 +3,101 @@
 // app/api/generate-tweets/route.ts
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { getAccessToken } from "@/utils/getAccessToken";
+import { prisma } from "@/lib/prisma";
 
 // Define the expected request body type
 interface GenerateTweetsRequest {
-  topics?: string;
-}
-
-// Define the response type
-interface GenerateTweetsResponse {
-  tweets: string[];
-  referencedTweets: number;
+  topic: string;
+  overarchingNarrative: string;
+  selectedMetrics: string[];
+  tweetStyle: string;
 }
 
 export async function POST(request: Request) {
   try {
     // Parse the request body
-    const { topics } = (await request.json()) as GenerateTweetsRequest;
+    const { topic, overarchingNarrative, selectedMetrics, tweetStyle } =
+      (await request.json()) as GenerateTweetsRequest;
 
-    const searchQuery = topics || "Web3 Gaming"; // Default query
+    // Validate request parameters
+    if (!topic || !selectedMetrics || selectedMetrics.length === 0) {
+      return NextResponse.json(
+        { error: "Topic and at least one metric are required" },
+        { status: 400 }
+      );
+    }
 
-    const access_token = await getAccessToken();
+    console.log("Generating tweets for topic:", topic);
+    console.log("Using metrics:", selectedMetrics);
+    console.log("Using overarching narrative:", overarchingNarrative);
+    console.log("Using tweet style:", tweetStyle);
 
-    // Function to fetch tweets with pagination
-    const fetchTweets = async (nextToken?: string) => {
-      const twitterUrl = new URL("https://api.x.com/2/tweets/search/recent");
-      twitterUrl.searchParams.append("query", searchQuery);
-      twitterUrl.searchParams.append("tweet.fields", "public_metrics");
-      twitterUrl.searchParams.append("max_results", "100");
-      if (nextToken) {
-        twitterUrl.searchParams.append("next_token", nextToken);
-      }
+    // Format the metrics as a string for the prompt
+    const metricsText = selectedMetrics.join("\n- ");
 
-      const twitterResponse = await fetch(twitterUrl.toString(), {
-        headers: {
-          Authorization: `Bearer ${access_token}`,
-        },
-      });
-
-      if (!twitterResponse.ok) {
-        throw new Error(
-          `Twitter API error: ${twitterResponse.status} ${twitterResponse.statusText}`
-        );
-      }
-
-      return twitterResponse.json();
+    // Define tweet style templates
+    const tweetStyles = {
+      catchphrase: {
+        name: "Catch Phrase Tweet",
+        example: "2025 is for immutable",
+        description: "Short, memorable phrase that captures attention",
+      },
+      oneliner: {
+        name: "One Liner Statement Tweet",
+        example:
+          "incredible how many of these predictions cobie absolutely nailed",
+        description: "Single impactful statement that stands alone",
+      },
+      causeeffect: {
+        name: "Cause and Effect 2 Liner Tweet",
+        example:
+          "The next 100 million users will come from gaming. One breakout web3 game will triple the global crypto DAU overnight.",
+        description: "Shows relationship between two connected ideas",
+      },
+      comparison: {
+        name: "Comparison Tweet",
+        example:
+          "the chatgpt launch 26 months ago was one of the craziest viral moments i'd ever seen, and we added one million users in five days.",
+        description: "Contrasts two different ideas or timeframes",
+      },
+      parallelism: {
+        name: "Parallelism Tweet",
+        example:
+          "It took us 6 years to partner with our first multi-billion dollar company. Another year to land our second. 8 months to get our third.",
+        description: "Uses similar structure to emphasize a pattern",
+      },
+      hookbullets: {
+        name: "Hook and Bullet Points Tweet",
+        example:
+          "2021 was the craziest year of our lives.\n\n- Axie holders grew by %10,363\n- AXS staking launch\n- Ronin mainnet launch\n- Katana launch (1.2 B liquidity & 20,000+ Daily traders)\n- Axie community treasury: 2 B + in value (52,000 ETH + 21 M AXS)\n\n2022 we'll shock the world (again).",
+        description: "Opening hook followed by concise bullet points",
+      },
+      multiparagraph: {
+        name: "Multiparagraph Tweet",
+        example:
+          'Gaming is bigger than music, movies, and TV combined.\n\nIt\'s compounding 10% year on year.\n\nThe $100bn a year spent "renting" items is going to turn into a trillion dollar ownable economy.\n\nAll of it will be built on web3.',
+        description: "Multiple short paragraphs building a narrative",
+      },
     };
 
-    const firstBatch = await fetchTweets();
-    let tweetsData = firstBatch.data;
-
-    if (firstBatch.meta.next_token) {
-      // Fetch the second batch of tweets
-      const secondBatch = await fetchTweets(firstBatch.meta.next_token);
-      tweetsData = tweetsData.concat(secondBatch.data);
-    }
-
-    // Ensure that tweet data exists
-    if (!tweetsData) {
-      throw new Error("No tweet data returned from Twitter API");
-    }
-
-    // Filter out tweets with less than 5 impressions or zero likes
-    const filteredTweets = tweetsData.filter((t: any) => {
-      const metrics = t.public_metrics;
-      return metrics.impression_count >= 5 && metrics.like_count > 0;
-    });
-
-    // Extract tweet texts with public metrics and join them with a separator
-    const tweetTexts = filteredTweets
-      .map((t: any) => {
-        const metrics = t.public_metrics;
-        return `${t.text}\nRetweets: ${metrics.retweet_count}, Replies: ${metrics.reply_count}, Likes: ${metrics.like_count}, Impressions: ${metrics.impression_count}`;
-      })
-      .join("\n---\n");
-
-    console.log(tweetTexts);
+    // Get the selected style or default to catchphrase
+    const selectedStyle =
+      tweetStyles[tweetStyle as keyof typeof tweetStyles] ||
+      tweetStyles.catchphrase;
 
     // Initialize Anthropic API client
     const anthropic = new Anthropic({
       apiKey: process.env.ANTHROPIC_API_KEY!,
     });
 
-    if (tweetTexts.length === 0) {
-      return NextResponse.json(
-        { error: "No tweets engaging tweets found" },
-        { status: 404 }
-      );
-    }
+    const tweetPrompt = await prisma.systemPrompts.findFirst({
+      where: {
+        name: "tweet",
+      },
+    });
 
-    // Create the prompt for the LLM using the fetched tweet texts
-    const prompt = `Given these recent tweets:\n${tweetTexts}\n\n Generate 4 distinct tweets on the topic of ${searchQuery} with each tweet corresponding in order to one of following 4 archetypes: 1. Concise Declarative statement Examples: Immutable is the home of gaming on Ethereum 2. Cause and effect two liner, example: The next 100 million users will come from gaming. \n One breakout web3 game will triple the global crypto DAU overnight. 3. Hook + short and concise bullet points + one liner conclusion. Example: “Web3 is <2 years away from mainstream. \n 1. $10BN invested in Web3 games in under 2 years. \n 2. Games take roughly 2 - 3 years to build to production. \n 3. Over the next year, we will see a huge influx of high-budget Web3 games, 10Xing crypto's active userbase”. Another Example: “Some background stories of the mega eth sale and honestly hats off to the team: \n - $40m demand for our 4h sales \n - first wave sold out in 56 seconds, \n - second wave sold out in 70 seconds \n - 98 countries \n might have broken echo \n it felt like an ICO. 4. Multiple sentence paragraphs. Each sentence should be a new line. Each progressive line should have the following content: a) Hook, b) Evidence supported by metrics, c) Analysis, d) Conclusion. For all four archetypes, follow the following rules and style guide: Ensure each sentence within the tweet has high coherence with the topic of the tweet. Do not use hashtags. Do not use emojis. Reference real metrics from the given recent tweets such as player count, investments, percentage growth, or time frames. Do not reference the engagement metrics. Use present tense for the first sentences, then use future tense for the remaining sentences. Prioritize brevity by making each sentence short and efficient. Do not use words in a complicated, technical register. Avoid long french latinate words, as these tend to be more abstract. Use short germanic words, as these tend to be more specific and concrete. Limit the use of modifiers within noun phrases. Allowed to use crypto twitter native lingo. Allowed to use acronyms. End each sentence with two new line characters. Format with each tweet separated by '||'`;
+    // Create the prompt for the LLM using the provided metrics and selected style
+    const prompt = `Given these metrics:\n${metricsText}\n\nAnd this overarching narrative: ${overarchingNarrative}\n\nGenerate 6 distinct tweets about ${topic} in the "${selectedStyle.name}" style.\n\nDescription of this style: ${selectedStyle.description}\n\nExample of this style: "${selectedStyle.example}"\n\n${tweetPrompt?.prompt || 'For all tweets, follow these rules:\n- Ensure each tweet has high coherence with the topic\n- Do not use hashtags or emojis\n- Reference real metrics from the given data\n- Prioritize brevity and clarity'}\n\nFormat with each tweet separated by '||'`;
 
     // Generate completions using Anthropic's Messages API
     // Note: Adjust the model name if needed according to Anthropic's documentation.
@@ -126,9 +130,8 @@ export async function POST(request: Request) {
     });
 
     // Return the first 4 tweets
-    const response: GenerateTweetsResponse = {
-      tweets: allTweets.slice(0, 4),
-      referencedTweets: filteredTweets.length,
+    const response = {
+      tweets: allTweets.slice(0, 6),
     };
 
     return NextResponse.json(response);

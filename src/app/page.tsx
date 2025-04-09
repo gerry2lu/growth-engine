@@ -10,7 +10,7 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
-  const [isImmutable, setIsImmutable] = useState(true);
+  const [isImmutable, setIsImmutable] = useState(false);
 
   useEffect(() => {
     const fetchUserProfileData = async () => {
@@ -35,7 +35,7 @@ export default function Home() {
     if (domain === "immutable.com" && isAuthenticated) {
       setIsImmutable(true);
     } else {
-      setIsImmutable(true);
+      setIsImmutable(false);
     }
   }, [email, isAuthenticated]);
 
@@ -57,6 +57,12 @@ export default function Home() {
   //   console.log(data);
   // };
 
+  // const updateRobbieScripts = async () => {
+  //   const response = await fetch("/api/get-trends");
+  //   const data = await response.json();
+  //   console.log(data);
+  // };
+
   return (
     <div
       className="relative h-screen flex justify-center items-center bg-cover bg-center"
@@ -68,10 +74,10 @@ export default function Home() {
           setIsAuthenticated={setIsAuthenticated}
         />
         {/* <button
-          onClick={testGetEngagement}
+          onClick={testDailySlackUpdate}
           className="bg-white mt-2 text-black py-2 px-4 rounded-3xl hover:bg-gray-300"
         >
-          Test Get Engagement
+          Send Slack Update
         </button> */}
         {/* {email && (
           <p className="text-gray-300 mt-2 ml-2 text-xs max-w-20">
@@ -82,20 +88,23 @@ export default function Home() {
       <div className="absolute inset-0 bg-black opacity-60"></div>
       <div
         className={`relative bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-10 shadow-lg overflow-y-scroll max-h-full ${
-          isClient && tweets.length > 0 ? "w-[80%]" : "w-[50%]"
+          isClient && tweets.length > 0 ? "w-[80%]" : "w-[60%]"
         }`}
       >
         <h1 className="text-4xl font-bold text-center mt-2 mb-6 text-white w-full">
-          Tweet Recommendation
-          <br />
-          Engine
+          Tweet Automation Engine
         </h1>
-
-        <TweetGenerator
-          tweets={tweets}
-          setTweets={setTweets}
-          isImmutable={isImmutable}
-        />
+        {isImmutable && isAuthenticated ? (
+          <TweetGenerator
+            tweets={tweets}
+            setTweets={setTweets}
+            isImmutable={isImmutable}
+          />
+        ) : (
+          <div className="text-white w-full text-center">
+            Please sign in with Immutable
+          </div>
+        )}
       </div>
     </div>
   );

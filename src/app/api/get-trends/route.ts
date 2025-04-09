@@ -319,6 +319,8 @@ export async function GET() {
       },
     });
 
+    console.log("All trends:", allTrendsToday);
+
     // Filter the trends
     const filteredTrends = allTrendsToday.filter((trend) =>
       trendsWhiteList.includes(trend.category)
