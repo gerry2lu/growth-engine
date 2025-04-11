@@ -10,7 +10,7 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
-  const [isImmutable, setIsImmutable] = useState(false);
+  const [isImmutable, setIsImmutable] = useState(true);
 
   useEffect(() => {
     const fetchUserProfileData = async () => {
@@ -94,7 +94,7 @@ export default function Home() {
         <h1 className="text-4xl font-bold text-center mt-2 mb-6 text-white w-full">
           Tweet Automation Engine
         </h1>
-        {isImmutable && isAuthenticated ? (
+        {isImmutable ? (
           <TweetGenerator
             tweets={tweets}
             setTweets={setTweets}

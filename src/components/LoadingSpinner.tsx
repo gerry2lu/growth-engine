@@ -4,7 +4,7 @@ const LoadingSpinner: React.FC = () => {
   const [loadingText, setLoadingText] = useState("Loading");
 
   useEffect(() => {
-    const texts = ["Searching topics", "Generating Tweets", "Almost There..."];
+    const texts = ["Loading", "Adding AI Magic", "Almost There..."];
     let index = 0;
     const interval = setInterval(() => {
       setLoadingText(texts[index]);

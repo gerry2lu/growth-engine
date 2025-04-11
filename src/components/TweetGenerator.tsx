@@ -1,13 +1,19 @@
 // app/components/TweetGenerator.tsx
 "use client";
 
-import { useState } from "react";
+import React, { useState, useRef } from "react";
+import Image from "next/image";
 import LoadingSpinner from "./LoadingSpinner";
 import { RiAiGenerate } from "react-icons/ri";
 import { PiTrendUpLight } from "react-icons/pi";
 import { FaArrowRight } from "react-icons/fa";
+import { FaXTwitter } from "react-icons/fa6";
+import { IoCloudUploadOutline } from "react-icons/io5";
+import { BsGlobe } from "react-icons/bs";
+import { HiOutlineDatabase } from "react-icons/hi";
 import PromptEditorDialog from "./PromptEditorDialog";
 import { Trend } from "@/app/api/get-trends/route";
+import { GenerateTweetsRequest } from "@/app/api/generate-tweets/route";
 
 type TweetGeneratorProps = {
   tweets: string[];
@@ -17,9 +23,11 @@ type TweetGeneratorProps = {
 
 // Define the flow steps
 type FlowStep =
+  | "dataSourceSelection" // New initial step for selecting data source
   | "initial"
   | "trendSelection"
   | "customTopic"
+  | "userInput" // New step for user input with context and file upload
   | "metricsSelection"
   | "tweetStyleSelection"
   | "results";
@@ -38,7 +46,15 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
   const [trends, setTrends] = useState<Trend[]>([]);
 
   // New state variables for the flow
-  const [currentStep, setCurrentStep] = useState<FlowStep>("initial");
+  const [currentStep, setCurrentStep] = useState<FlowStep>(
+    "dataSourceSelection"
+  );
+  const [userInputText, setUserInputText] = useState<string>("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedModel, setSelectedModel] = useState<string | undefined>(
+    undefined
+  );
 
   // Define tweet style types
   type TweetStyle = {
@@ -93,8 +109,7 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
     {
       id: "hookbullets",
       name: "Hook and Bullet Points Tweet",
-      example:
-        "2021 was the craziest year of our lives.\n\n- Axie holders grew by %10,363\n- AXS staking launch\n- Ronin mainnet launch\n- Katana launch (1.2 B liquidity & 20,000+ Daily traders)\n- Axie community treasury: 2 B + in value (52,000 ETH + 21 M AXS)\n\n2022 we'll shock the world (again).",
+      example: `2021 was the craziest year of our lives.\n\n- Axie holders grew by %10,363\n- AXS staking launch\n- Ronin mainnet launch\n- Katana launch (1.2 B liquidity & 20,000+ Daily traders)\n- Axie community treasury: 2 B + in value (52,000 ETH + 21 M AXS)\n\n2022 we'll shock the world (again).`,
       description: "Opening hook followed by concise bullet points",
       selected: false,
     },
@@ -107,6 +122,23 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
       selected: false,
     },
   ]);
+
+  const resetStates = () => {
+    setTweetStyles((prevStyles) =>
+      prevStyles.map((style) => ({
+        ...style,
+        selected: false,
+      }))
+    );
+    setTopics("");
+    setOverarchingNarrative("");
+    setMetrics([]);
+    setTweets([]);
+    setSelectedTrend("");
+    setSelectedModel(undefined);
+    setUserInputText("");
+    setSelectedFile(null);
+  };
 
   // Toggle tweet style selection
   const toggleTweetStyleSelection = (id: string) => {
@@ -126,6 +158,36 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [overarchingNarrative, setOverarchingNarrative] = useState<string>("");
 
+  // Function to generate tweets with support for different models
+  const generateTweets = async (params: GenerateTweetsRequest) => {
+    try {
+      const response = await fetch("/api/generate-tweets", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(params),
+      });
+
+      const data = await response.json();
+
+      // Remove the first line from the first tweet
+      if (data.tweets && data.tweets.length > 0) {
+        data.tweets[0] = removeTweetHeader(data.tweets[0]);
+      }
+
+      // Set the tweets
+      setTweets(data.tweets);
+
+      setCurrentStep("results");
+      setLoading(false);
+    } catch (error) {
+      console.error("Error generating tweets:", error);
+      setLoading(false);
+      return [];
+    }
+  };
+
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setLoading(true);
@@ -133,31 +195,19 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
     try {
       const selectedStyle = tweetStyles.find((style) => style.selected);
 
-      const response = await fetch("/api/generate-tweets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic: topics || "Web3 gaming",
-          overarchingNarrative: overarchingNarrative || "",
-          selectedMetrics: metrics.filter((m) => m.selected).map((m) => m.id),
-          tweetStyle: selectedStyle?.id || "catchphrase",
-        }),
+      // Use the generateTweets function instead of making a direct API call
+      await generateTweets({
+        topic: topics || "Web3 gaming",
+        overarchingNarrative: overarchingNarrative || "",
+        selectedMetrics: metrics.filter((m) => m.selected).map((m) => m.id),
+        tweetStyle: selectedStyle?.id || "catchphrase",
+        model: selectedModel, // Pass the selected model if available
       });
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-
-      // Remove the first line from the first tweet
-      data.tweets[0] = removeTweetHeader(data.tweets[0]);
-
-      setTweets(data.tweets);
-      setCurrentStep("results");
+      // Note: We don't need to set currentStep or loading state here
+      // as the generateTweets function already handles that
     } catch (error) {
       console.error("Error generating tweets:", error);
-    } finally {
       setLoading(false);
     }
   };
@@ -470,120 +520,442 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
     </div>
   );
 
-  const renderResults = () => (
-    <div className="w-full">
-      <div className="flex justify-between items-center mb-2">
-        <h1 className="text-2xl text-white pt-3 font-bold mt-2">
-          Tweet Recommendations
-        </h1>
-        <PromptEditorDialog
-          promptName="tweet"
-          buttonLabel="Edit Tweet Prompt"
-          buttonClassName="text-xs"
-          onPromptUpdated={() => handleSubmit()}
-        />
-      </div>
-      <p className="inline-block text-gray-300 text-sm pb-3 italic">
-        Based on {metrics.length} metrics selected
-      </p>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {tweets.map((tweet, index) => (
-          <div
-            key={index}
-            className="p-4 border rounded-xl bg-gray-50 flex flex-col justify-between"
-          >
-            <p className="whitespace-pre-wrap">{tweet}</p>
-            <button
-              onClick={() => handleCopyTweet(tweet)}
-              className="mt-4 text-sm bg-black text-white px-3 py-2 rounded-lg hover:bg-gray-700 self-end"
+  const renderResults = () => {
+    // Function to format tweet text with line breaks
+    const formatTweetText = (text: string) => {
+      return text.split("\n").map((line, i) => (
+        <React.Fragment key={i}>
+          {line}
+          {i < text.split("\n").length - 1 && <br />}
+        </React.Fragment>
+      ));
+    };
+
+    return (
+      <div className="w-full">
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-2xl text-white pt-3 font-bold mt-2">
+            Tweet Recommendations
+          </h1>
+          <PromptEditorDialog
+            promptName="tweet"
+            buttonLabel="Edit Tweet Prompt"
+            buttonClassName="text-xs"
+            onPromptUpdated={() => handleSubmit()}
+          />
+        </div>
+        <p className="inline-block text-gray-300 text-sm pb-3 italic">
+          Based on {metrics.length} metrics selected
+        </p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {tweets.map((tweet, index) => (
+            <div
+              key={index}
+              className="bg-white rounded-xl overflow-hidden shadow-md border border-gray-200"
             >
-              Copy
-            </button>
-          </div>
-        ))}
+              {/* Tweet header with profile info */}
+              <div className="p-4 flex items-start">
+                {/* Profile avatar */}
+                <div className="h-12 w-12 rounded-full bg-gray-300 overflow-hidden mr-3 flex-shrink-0">
+                  <Image
+                    src="/avatar.jpg"
+                    alt="Profile"
+                    width={48}
+                    height={48}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+
+                {/* User info and tweet content */}
+                <div className="flex-1">
+                  {/* Username and verification */}
+                  <div className="flex items-center">
+                    <span className="font-bold text-gray-900">
+                      Robbie Ferguson
+                    </span>
+                    <svg
+                      className="h-5 w-5 ml-1 text-blue-500"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.345.696-.436 1.04-.207.346.23.44.696.21 1.04z"></path>
+                    </svg>
+                    <span className="text-gray-500 ml-1">@0xFerg</span>
+                  </div>
+
+                  {/* Tweet text */}
+                  <div className="mt-1 text-gray-800 whitespace-pre-line">
+                    {formatTweetText(tweet)}
+                  </div>
+
+                  {/* Tweet date */}
+                  <div className="mt-2 text-gray-500 text-sm">
+                    {new Date().toLocaleTimeString()} ·{" "}
+                    {new Date().toLocaleDateString()}
+                  </div>
+
+                  {/* Tweet actions */}
+                  <div className="mt-3 flex justify-between max-w-md">
+                    {/* Comment */}
+                    <button className="flex items-center text-gray-500 hover:text-blue-500">
+                      <svg
+                        className="h-5 w-5 mr-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="1.5"
+                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                        ></path>
+                      </svg>
+                      <span>24</span>
+                    </button>
+
+                    {/* Retweet */}
+                    <button className="flex items-center text-gray-500 hover:text-green-500">
+                      <svg
+                        className="h-5 w-5 mr-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="1.5"
+                          d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                        ></path>
+                      </svg>
+                      <span>78</span>
+                    </button>
+
+                    {/* Like */}
+                    <button className="flex items-center text-gray-500 hover:text-red-500">
+                      <svg
+                        className="h-5 w-5 mr-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="1.5"
+                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                        ></path>
+                      </svg>
+                      <span>412</span>
+                    </button>
+
+                    {/* Share */}
+                    <button className="flex items-center text-gray-500 hover:text-blue-500">
+                      <svg
+                        className="h-5 w-5 mr-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="1.5"
+                          d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                        ></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Copy button */}
+              <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
+                <button
+                  onClick={() => handleCopyTweet(tweet)}
+                  className="w-full text-sm bg-black text-white px-3 py-2 rounded-lg hover:bg-gray-700 flex items-center justify-center"
+                >
+                  <svg
+                    className="h-4 w-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+                    ></path>
+                  </svg>
+                  Copy Tweet
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-center gap-6 pt-6 mt-4">
+          <button
+            onClick={() => {
+              setCurrentStep("dataSourceSelection");
+              resetStates();
+            }}
+            className="text-white bg-purple-600 px-4 py-2 rounded-lg hover:bg-purple-700"
+          >
+            Start Over
+          </button>
+          <button
+            onClick={() => setCurrentStep("tweetStyleSelection")}
+            className="text-gray-300 px-3 py-1 rounded-lg hover:bg-white/20"
+          >
+            Back to Forms
+          </button>
+        </div>
       </div>
-      <div className="flex justify-center gap-6">
-        <button
-          onClick={() => setCurrentStep("initial")}
-          className="text-white bg-purple-600 px-4 py-2 rounded-lg hover:bg-purple-700"
-        >
-          Start Over
-        </button>
-        <button
-          onClick={() => setCurrentStep("tweetStyleSelection")}
-          className="text-gray-300 px-3 py-1 rounded-lg hover:bg-white/20 "
-        >
-          Back to Forms
-        </button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   // Render tweet style selection step
-  const renderTweetStyleSelection = () => (
-    <div className="w-full">
-      <h2 className="text-xl text-white mb-4">Select a Tweet Style</h2>
-      <p className="text-gray-300 mb-6">
-        Choose the style that best fits your message for{" "}
-        {topics || "Web3 gaming"}
-      </p>
+  const renderTweetStyleSelection = () => {
+    // Determine the back button destination based on the previous step
+    const handleBackClick = () => {
+      if (userInputText) {
+        // If coming from user input, go back to user input
+        setCurrentStep("userInput");
+      } else {
+        // Otherwise go back to metrics selection
+        setCurrentStep("metricsSelection");
+      }
+    };
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        {tweetStyles.map((style) => (
-          <div
-            key={style.id}
-            onClick={() => toggleTweetStyleSelection(style.id)}
-            className={`p-4 rounded-lg cursor-pointer border transition-all duration-200 ${
-              style.selected
-                ? "border-purple-500 bg-purple-900/30 shadow-lg shadow-purple-500/20"
-                : "border-gray-700 bg-gray-800/50 hover:bg-gray-800 hover:border-gray-500"
-            }`}
+    // Handle the generate tweets button click
+    const handleGenerateClick = () => {
+      setLoading(true);
+
+      // If we have user input text, use OpenAI model
+      if (userInputText) {
+        const selectedStyle = tweetStyles.find((style) => style.selected);
+        generateTweets({
+          topic: userInputText,
+          overarchingNarrative: "Generated from user input",
+          selectedMetrics: ["Refer to user metrics"],
+          tweetStyle: selectedStyle?.id || "multiparagraph",
+          model: "OpenAI",
+          customPrompt: `Generate 6 distinct tweets about the following topic: ${userInputText}\n\nUse the "${selectedStyle?.name}" style: ${selectedStyle?.description}\n\nFormat with each tweet separated by '||'`,
+        });
+      } else {
+        // Otherwise use the standard flow
+        handleSubmit();
+      }
+    };
+
+    return (
+      <div className="w-full">
+        <h2 className="text-xl text-white mb-4">Select a Tweet Style</h2>
+        <p className="text-gray-300 mb-6">
+          Choose the style that best fits your message for{" "}
+          {userInputText ? "your input" : topics || "Web3 gaming"}
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {tweetStyles.map((style) => (
+            <div
+              key={style.id}
+              onClick={() => toggleTweetStyleSelection(style.id)}
+              className={`p-4 rounded-lg cursor-pointer border transition-all duration-200 ${
+                style.selected
+                  ? "border-purple-500 bg-purple-900/30 shadow-lg shadow-purple-500/20"
+                  : "border-gray-700 bg-gray-800/50 hover:bg-gray-800 hover:border-gray-500"
+              }`}
+            >
+              <div className="flex items-center mb-2">
+                <input
+                  type="radio"
+                  checked={style.selected}
+                  onChange={() => toggleTweetStyleSelection(style.id)}
+                  className="mr-3 h-4 w-4 accent-purple-500"
+                />
+                <h3 className="text-white font-medium">{style.name}</h3>
+              </div>
+              <p className="text-gray-400 text-sm mb-3">{style.description}</p>
+              <div className="bg-black/30 p-3 rounded border border-gray-700 text-gray-300 text-sm font-mono">
+                {style.example}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex justify-between">
+          <button
+            onClick={handleBackClick}
+            className="text-gray-300 px-3 py-1 rounded-lg hover:bg-white/20"
           >
-            <div className="flex items-center mb-2">
-              <input
-                type="radio"
-                checked={style.selected}
-                onChange={() => toggleTweetStyleSelection(style.id)}
-                className="mr-3 h-4 w-4 accent-purple-500"
-              />
-              <h3 className="text-white font-medium">{style.name}</h3>
-            </div>
-            <p className="text-gray-400 text-sm mb-3">{style.description}</p>
-            <div className="bg-black/30 p-3 rounded border border-gray-700 text-gray-300 text-sm font-mono">
-              {style.example}
-            </div>
-          </div>
-        ))}
+            Back
+          </button>
+          <button
+            onClick={handleGenerateClick}
+            disabled={loading}
+            className="bg-black text-white px-5 py-3 rounded-3xl disabled:opacity-50 flex items-center space-x-2 hover:bg-gray-900"
+          >
+            <RiAiGenerate className="mr-2 h-5 w-5" /> Generate Tweets
+          </button>
+        </div>
       </div>
+    );
+  };
 
-      <div className="flex justify-between">
+  // Render the data source selection step
+  const renderDataSourceSelection = () => (
+    <div className="flex flex-col space-y-4 items-center w-full">
+      <h2 className="text-xl text-white mb-4">
+        Select a data source for tweet generation
+      </h2>
+      <div className="flex flex-col md:flex-row gap-4 w-full max-w-2xl">
         <button
-          onClick={() => setCurrentStep("metricsSelection")}
-          className="text-gray-300 px-3 py-1 rounded-lg hover:bg-white/20"
+          onClick={() => {
+            setSelectedModel(undefined);
+            setCurrentStep("initial");
+          }}
+          disabled={loading}
+          className="bg-gray-100 text-black px-5 py-8 rounded-xl disabled:opacity-50 flex flex-col items-center justify-center space-y-3 border-2 border-gray-100 hover:border-purple-600 hover:bg-gray-200 flex-1 min-h-[150px]"
         >
-          Back
+          <FaXTwitter className="h-10 w-10" />
+          <span className="text-lg font-medium">Generate from X Data</span>
         </button>
         <button
-          onClick={() => handleSubmit()}
+          onClick={() => {
+            setSelectedModel("OpenAI");
+            setCurrentStep("userInput");
+          }}
           disabled={loading}
-          className="bg-black text-white px-5 py-3 rounded-3xl disabled:opacity-50 flex items-center space-x-2 hover:bg-gray-900"
+          className="bg-gray-100 text-black px-5 py-8 rounded-xl disabled:opacity-50 flex flex-col items-center justify-center space-y-3 border-2 border-gray-100 hover:border-purple-600 hover:bg-gray-200 flex-1 min-h-[150px]"
         >
-          <RiAiGenerate className="mr-2 h-5 w-5" /> Generate Tweets
+          <BsGlobe className="h-10 w-10" />
+          <span className="text-lg font-medium">
+            Generate from Internet Data
+          </span>
+        </button>
+        <button
+          onClick={() => {
+            setSelectedModel("OpenAI");
+            setCurrentStep("userInput");
+          }}
+          disabled={loading}
+          className="bg-gray-100 text-black px-5 py-8 rounded-xl disabled:opacity-50 flex flex-col items-center justify-center space-y-3 border-2 border-gray-100 hover:border-purple-600 hover:bg-gray-200 flex-1 min-h-[150px]"
+        >
+          <HiOutlineDatabase className="h-10 w-10" />
+          <span className="text-lg font-medium">
+            Generate from Internal Data
+          </span>
         </button>
       </div>
     </div>
   );
+
+  // Render the user input step with file upload
+  const renderUserInput = () => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files.length > 0) {
+        setSelectedFile(e.target.files[0]);
+      }
+    };
+
+    // The generateTweets function is now defined at the component level
+
+    const handleInternalSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      // Process the user input and file upload
+      setLoading(true);
+
+      // Instead of generating tweets directly, go to tweet style selection
+      setTimeout(() => {
+        setLoading(false);
+        setCurrentStep("tweetStyleSelection");
+      }, 500); // Small delay for better UX
+    };
+
+    const triggerFileInput = () => {
+      if (fileInputRef.current) {
+        fileInputRef.current.click();
+      }
+    };
+
+    return (
+      <div className="w-full">
+        <h2 className="text-xl text-white mb-4">
+          Enter your context and upload relevant files
+        </h2>
+        <form onSubmit={handleInternalSubmit} className="space-y-4">
+          <textarea
+            value={userInputText}
+            onChange={(e) => setUserInputText(e.target.value)}
+            placeholder="Describe what you want to generate tweets about..."
+            className="w-full p-4 border rounded-lg outline-none text-black min-h-[120px]"
+            autoFocus
+          />
+
+          <div className="flex flex-col space-y-2">
+            <div
+              onClick={triggerFileInput}
+              className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:border-purple-500 transition-colors"
+            >
+              <IoCloudUploadOutline className="h-12 w-12 text-gray-300 mb-2" />
+              <p className="text-gray-300 text-center">
+                {selectedFile
+                  ? selectedFile.name
+                  : "Click to upload a PDF or document"}
+              </p>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept=".pdf,.doc,.docx,.txt"
+                className="hidden"
+              />
+            </div>
+            {selectedFile && (
+              <p className="text-sm text-gray-300">
+                File selected: {selectedFile.name} (
+                {Math.round(selectedFile.size / 1024)} KB)
+              </p>
+            )}
+          </div>
+
+          <div className="flex justify-between items-center">
+            <button
+              type="submit"
+              disabled={loading || (!userInputText && !selectedFile)}
+              className="bg-black text-white px-5 py-3 rounded-3xl disabled:opacity-50 flex items-center space-x-2 hover:bg-gray-900"
+            >
+              <RiAiGenerate className="mr-2 h-5 w-5" /> Continue
+            </button>
+            <button
+              onClick={() => setCurrentStep("dataSourceSelection")}
+              className="text-gray-300 px-3 py-1 rounded-lg hover:bg-white/20"
+            >
+              Back
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  };
 
   const renderCurrentStep = () => {
     if (loading) return <LoadingSpinner />;
 
     switch (currentStep) {
+      case "dataSourceSelection":
+        return renderDataSourceSelection();
       case "initial":
         return renderInitialButtons();
       case "trendSelection":
         return renderTrendSelection();
       case "customTopic":
         return renderCustomTopic();
+      case "userInput":
+        return renderUserInput();
       case "metricsSelection":
         return renderMetricsSelection();
       case "tweetStyleSelection":
@@ -591,7 +963,7 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
       case "results":
         return tweets.length > 0 ? renderResults() : renderInitialButtons();
       default:
-        return renderInitialButtons();
+        return renderDataSourceSelection();
     }
   };
 

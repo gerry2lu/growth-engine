@@ -3,21 +3,30 @@
 // app/api/generate-tweets/route.ts
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { prisma } from "@/lib/prisma";
 
 // Define the expected request body type
-interface GenerateTweetsRequest {
+export interface GenerateTweetsRequest {
   topic: string;
   overarchingNarrative: string;
   selectedMetrics: string[];
   tweetStyle: string;
+  model?: string;
+  customPrompt?: string;
 }
 
 export async function POST(request: Request) {
   try {
     // Parse the request body
-    const { topic, overarchingNarrative, selectedMetrics, tweetStyle } =
-      (await request.json()) as GenerateTweetsRequest;
+    const {
+      topic,
+      overarchingNarrative,
+      selectedMetrics,
+      tweetStyle,
+      model,
+      customPrompt,
+    } = (await request.json()) as GenerateTweetsRequest;
 
     // Validate request parameters
     if (!topic || !selectedMetrics || selectedMetrics.length === 0) {
@@ -70,7 +79,7 @@ export async function POST(request: Request) {
         name: "Hook and Bullet Points Tweet",
         example:
           "2021 was the craziest year of our lives.\n\n- Axie holders grew by %10,363\n- AXS staking launch\n- Ronin mainnet launch\n- Katana launch (1.2 B liquidity & 20,000+ Daily traders)\n- Axie community treasury: 2 B + in value (52,000 ETH + 21 M AXS)\n\n2022 we'll shock the world (again).",
-        description: "Opening hook followed by concise bullet points",
+        description: `Opening hook followed 3-4 concise bullet points. No rhetorical questions. Prioritise data driven metrics.`,
       },
       multiparagraph: {
         name: "Multiparagraph Tweet",
@@ -85,53 +94,171 @@ export async function POST(request: Request) {
       tweetStyles[tweetStyle as keyof typeof tweetStyles] ||
       tweetStyles.catchphrase;
 
-    // Initialize Anthropic API client
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY!,
-    });
-
+    // Get the tweet prompt from the database
     const tweetPrompt = await prisma.systemPrompts.findFirst({
       where: {
         name: "tweet",
       },
     });
 
-    // Create the prompt for the LLM using the provided metrics and selected style
-    const prompt = `Given these metrics:\n${metricsText}\n\nAnd this overarching narrative: ${overarchingNarrative}\n\nGenerate 6 distinct tweets about ${topic} in the "${selectedStyle.name}" style.\n\nDescription of this style: ${selectedStyle.description}\n\nExample of this style: "${selectedStyle.example}"\n\n${tweetPrompt?.prompt || 'For all tweets, follow these rules:\n- Ensure each tweet has high coherence with the topic\n- Do not use hashtags or emojis\n- Reference real metrics from the given data\n- Prioritize brevity and clarity'}\n\nFormat with each tweet separated by '||'`;
+    // Create the standard prompt for the Anthropic LLM using the provided metrics and selected style
+    const standardPrompt = `Given these metrics:\n${metricsText}\n\nAnd this overarching narrative: ${overarchingNarrative}\n\nGenerate 6 distinct tweets about ${topic} in the "${
+      selectedStyle.name
+    }" style.\n\nDescription of this style: ${
+      selectedStyle.description
+    }\n\nExample of this style: "${selectedStyle.example}"\n\n${
+      tweetPrompt?.prompt ||
+      "For all tweets, follow these rules:\n- Ensure each tweet has high coherence with the topic\n- Do not use hashtags or emojis\n- Reference real metrics from the given data\n- Prioritize brevity and clarity \n- Limit each tweet to 280 characters"
+    }\n\nFormat with each tweet separated by '||'`;
 
-    // Generate completions using Anthropic's Messages API
-    // Note: Adjust the model name if needed according to Anthropic's documentation.
-    const completions = await Promise.all([
-      anthropic.messages.create({
-        model: "claude-3-5-sonnet-20241022", // Use a supported model name
-        max_tokens: 300,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    ]);
+    // Create the standard prompt for the OpenAI LLM using the provided metrics and selected style
+    const openaiStandardPrompt = `Given this context and user request: ${
+      customPrompt || ""
+    }\n\nGenerate 6 distinct tweets about ${customPrompt} in the style of: "${
+      selectedStyle.name
+    } The description of this style is: "${
+      selectedStyle.description
+    }". Make sure to separate each tweet with a "||". Ensure each tweet has high coherence with the topic\n- 
+    Do not use hashtags or emojis\n- Reference real metrics from the given data\n
+    \n\n
+    Source relevant information from the internet to support your tweets.  \n\n
+    For all tweets, follow these rules:\n
+    - Ensure each tweet has high coherence with the topic\n
+    - Do not use hashtags or emojis\n
+    - Reference real metrics from the given data such as player count, investments, percentage growth, or time frames\n
+    - Do not reference engagement metrics like likes or retweets\n
+    - Use present tense for the first sentences, then use future tense for the remaining sentences when appropriate\n
+    - You may use crypto Twitter native lingo and acronyms\n
+    - Prioritize brevity by making each sentence short and efficient\n
+    - Limit each tweet to 280 characters\n
+    - Separate each tweet with a "||". 
+      `;
+    let generatedText = "";
 
-    console.log("Anthropic completions:", completions);
+    // Use OpenAI if specified, otherwise use Anthropic
+    if (model === "OpenAI") {
+      console.log("Using OpenAI GPT-4o model with web search");
 
-    completions.forEach((completion, index) => {
-      console.log(`Completion ${index} content:`, completion.content);
-    });
+      // Initialize OpenAI API client
+      const openai = new OpenAI({
+        apiKey: process.env.OPEN_AI_API_SECRET!,
+      });
 
-    // Process the responses.
-    const allTweets = completions.flatMap((c: any) => {
-      let generatedText = "";
-      if (Array.isArray(c.content)) {
-        // Use the 'text' property from each segment and join them together.
-        generatedText = c.content.map((segment: any) => segment.text).join("");
-      } else {
-        generatedText = c.content;
+      // Use the custom prompt if provided, otherwise use the standard prompt
+      const promptToUse = openaiStandardPrompt;
+
+      try {
+        // Use the Responses API with web search enabled
+        const response = await openai.responses.create({
+          model: "gpt-4o",
+          tools: [
+            { type: "web_search_preview", search_context_size: "medium" },
+          ],
+          input: promptToUse,
+        });
+
+        // Extract the text response from the API
+        generatedText = response.output_text || "";
+
+        // Process the tweets
+        const tweets = generatedText
+          .split("||") // Split by the separator
+          .map((tweet) => tweet.trim()) // Trim whitespace
+          .map((tweet) => tweet)
+          .filter((tweet) => tweet.length > 0); // Remove empty tweets
+
+        return NextResponse.json({ tweets });
+      } catch (error) {
+        console.error("OpenAI API error:", error);
+        return NextResponse.json(
+          { error: "Error generating tweets with OpenAI" },
+          { status: 500 }
+        );
       }
 
-      // Split the generated text on the '||' separator and trim each tweet.
-      return generatedText.split("||").map((t: string) => t.trim());
-    });
+      // We're now using the Responses API with web search instead of the Chat Completions API
+      // The code below will not execute due to the early return in the try block above
 
-    // Return the first 4 tweets
+      // This code will not execute due to the early return in the try block above
+      // The generatedText is already set in the try block
+    } else {
+      console.log("Using Anthropic Claude model");
+
+      // Initialize Anthropic API client
+      const anthropic = new Anthropic({
+        apiKey: process.env.ANTHROPIC_API_KEY!,
+      });
+
+      // Generate completions using Anthropic's Messages API
+      const completion = await anthropic.messages.create({
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: standardPrompt }],
+      });
+
+      console.log("Anthropic completion:", completion);
+
+      // Extract the generated text
+      if (Array.isArray(completion.content)) {
+        // Use the 'text' property from each segment and join them together
+        generatedText = completion.content
+          .map((segment: any) => segment.text)
+          .join("");
+      } else {
+        generatedText = completion.content;
+      }
+    }
+
+    // Split the text by the separator and filter out any empty strings
+    const allTweets = generatedText
+      .split("||") // Split by the separator
+      .map((tweet) => tweet.trim()) // Trim whitespace
+      .map((tweet) => tweet) // Strip bracket content
+      .filter((tweet) => tweet.length > 0); // Filter out empty strings
+
+    // Get the first 6 tweets
+    const tweets = allTweets.slice(0, 6);
+
+    // Generate images for the first two tweets using OpenAI
+    const imageUrls = [];
+
+    if (process.env.OPENAI_API_KEY) {
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+
+      try {
+        // Generate images for the first two tweets
+        for (let i = 0; i < Math.min(2, tweets.length); i++) {
+          const tweet = tweets[i];
+
+          // Create a prompt for image generation based on the tweet content
+          const imagePrompt = `Create a high-quality, professional image that represents the following tweet content: "${tweet}". The image should be suitable for social media, visually appealing, and relevant to the tweet's message.`;
+
+          const imageResponse = await openai.images.generate({
+            model: "dall-e-3",
+            prompt: imagePrompt,
+            n: 1,
+            size: "1024x1024",
+          });
+
+          if (imageResponse.data && imageResponse.data[0].url) {
+            imageUrls.push({
+              tweetIndex: i,
+              url: imageResponse.data[0].url,
+            });
+          }
+        }
+      } catch (imageError) {
+        console.error("Error generating images:", imageError);
+        // Continue with the response even if image generation fails
+      }
+    }
+
+    // Return the tweets and image URLs
     const response = {
-      tweets: allTweets.slice(0, 6),
+      tweets,
+      images: imageUrls,
     };
 
     return NextResponse.json(response);

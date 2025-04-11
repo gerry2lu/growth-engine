@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect } from "react";
 import { FiEdit } from "react-icons/fi";
 import { createPortal } from "react-dom";
 
@@ -45,11 +45,12 @@ export default function PromptEditorDialog({
   };
 
   // Fetch the prompt content when the dialog is opened
+  /* eslint-disable-next-line */
   useEffect(() => {
     if (isOpen) {
       fetchPromptContent();
     }
-  }, [isOpen, fetchPromptContent]);
+  }, [isOpen]);
 
   const handleSavePrompt = async () => {
     try {
