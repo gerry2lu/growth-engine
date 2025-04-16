@@ -11,9 +11,9 @@ import { FaXTwitter } from "react-icons/fa6";
 import { IoCloudUploadOutline } from "react-icons/io5";
 import { BsGlobe } from "react-icons/bs";
 import { HiOutlineDatabase } from "react-icons/hi";
-import PromptEditorDialog from "./PromptEditorDialog";
+// import PromptEditorDialog from "./PromptEditorDialog";
 import { Trend } from "@/app/api/get-trends/route";
-import { GenerateTweetsRequest } from "@/app/api/generate-tweets/route";
+import { GenerateTweetsRequest } from "@/utils/generateFromOpenAI";
 
 type TweetGeneratorProps = {
   tweets: string[];
@@ -138,6 +138,7 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
     setSelectedModel(undefined);
     setUserInputText("");
     setSelectedFile(null);
+    setCustomMetric("");
   };
 
   // Toggle tweet style selection
@@ -150,6 +151,27 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
     );
   };
 
+  // Add a custom metric
+  const addCustomMetric = () => {
+    if (customMetric.trim() === "") return;
+
+    // Create a unique ID for the custom metric
+    const newId = `custom-${Date.now()}`;
+
+    // Add the new metric to the list
+    setMetrics([
+      ...metrics,
+      {
+        id: newId,
+        name: customMetric.trim(),
+        selected: true,
+      },
+    ]);
+
+    // Clear the input field
+    setCustomMetric("");
+  };
+
   // Proceed from metrics selection to tweet style selection
   const handleProceedToStyleSelection = () => {
     setCurrentStep("tweetStyleSelection");
@@ -157,6 +179,7 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
   const [selectedTrend, setSelectedTrend] = useState<string>("");
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [overarchingNarrative, setOverarchingNarrative] = useState<string>("");
+  const [customMetric, setCustomMetric] = useState<string>("");
 
   // Function to generate tweets with support for different models
   const generateTweets = async (params: GenerateTweetsRequest) => {
@@ -327,7 +350,17 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
         selected: true, // Pre-select all metrics by default
       }));
 
-      setMetrics(formattedMetrics);
+      // Preserve custom metrics when setting new metrics
+      setMetrics((currentMetrics) => {
+        // Filter out custom metrics from the current metrics
+        const customMetrics = currentMetrics.filter((metric) =>
+          metric.id.startsWith("custom-")
+        );
+
+        // Combine the API metrics with the preserved custom metrics
+        return [...formattedMetrics, ...customMetrics];
+      });
+
       setCurrentStep("metricsSelection");
     } catch (error) {
       console.error("Error fetching metrics:", error);
@@ -458,12 +491,12 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
     <div className="w-full">
       <div className="flex justify-between items-center mb-2">
         <h2 className="text-xl text-white mb-2">Unselect irrelevant metrics</h2>
-        <PromptEditorDialog
+        {/* <PromptEditorDialog
           promptName="metrics"
           buttonLabel="Edit Metrics Prompt"
           buttonClassName="text-xs"
           onPromptUpdated={() => fetchMetrics(topics)}
-        />
+        /> */}
       </div>
       <p className="text-gray-300 mb-2">Topic: {topics || "Web3 gaming"}</p>
 
@@ -476,7 +509,29 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
         </div>
       )}
 
+      {/* Add custom metric input */}
       <div className="bg-white bg-opacity-10 p-4 rounded-lg mb-4">
+        <h3 className="text-white mb-3">Add your own metrics</h3>
+        <div className="flex mb-4">
+          <input
+            type="text"
+            value={customMetric}
+            onChange={(e) => setCustomMetric(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addCustomMetric()}
+            placeholder="Enter a custom metric..."
+            className="flex-grow p-3 border rounded-l-lg outline-none text-black"
+          />
+          <button
+            onClick={addCustomMetric}
+            className="bg-purple-600 text-white px-4 rounded-r-lg hover:bg-purple-700"
+            disabled={customMetric.trim() === ""}
+          >
+            Add
+          </button>
+        </div>
+
+        {/* Existing metrics list */}
+        <h3 className="text-white mb-3">Available metrics</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {metrics.map((metric) => (
             <div
@@ -495,6 +550,18 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
                 className="mr-3 h-5 w-5"
               />
               <span>{metric.name}</span>
+              {metric.id.startsWith("custom-") && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMetrics(metrics.filter((m) => m.id !== metric.id));
+                  }}
+                  className="ml-auto text-red-500 hover:text-red-700"
+                  title="Remove custom metric"
+                >
+                  ×
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -537,12 +604,12 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
           <h1 className="text-2xl text-white pt-3 font-bold mt-2">
             Tweet Recommendations
           </h1>
-          <PromptEditorDialog
+          {/* <PromptEditorDialog
             promptName="tweet"
             buttonLabel="Edit Tweet Prompt"
             buttonClassName="text-xs"
             onPromptUpdated={() => handleSubmit()}
-          />
+          /> */}
         </div>
         <p className="inline-block text-gray-300 text-sm pb-3 italic">
           Based on {metrics.length} metrics selected

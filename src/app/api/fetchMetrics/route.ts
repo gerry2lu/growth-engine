@@ -42,17 +42,12 @@ export async function POST(request: Request) {
     const access_token = process.env.R_BEARER_TOKEN;
 
     // Function to fetch tweets using the v2 recent search API
-    const fetchTweets = async (nextToken?: string) => {
+    const fetchTweets = async () => {
       const twitterUrl = new URL("https://api.x.com/2/tweets/search/recent");
 
       // Add required parameters
       twitterUrl.searchParams.append("query", searchQuery);
       twitterUrl.searchParams.append("max_results", "100"); // Max allowed per request
-
-      // Add pagination token if provided
-      if (nextToken) {
-        twitterUrl.searchParams.append("next_token", nextToken);
-      }
 
       // Add tweet fields to include public metrics
       twitterUrl.searchParams.append(
@@ -77,18 +72,9 @@ export async function POST(request: Request) {
       return twitterResponse.json();
     };
 
-    // Step 1: Fetch tweets from Twitter (up to 200 results with pagination)
+    // Step 1: Fetch tweets from Twitter (up to 100 results)
     const firstBatch = await fetchTweets();
-    let tweetsData = firstBatch.data || [];
-
-    // If we have a next_token and less than 200 tweets, fetch the next batch
-    if (firstBatch.meta?.next_token && tweetsData.length < 200) {
-      console.log("Fetching second batch of tweets...");
-      const secondBatch = await fetchTweets(firstBatch.meta.next_token);
-      if (secondBatch.data && secondBatch.data.length > 0) {
-        tweetsData = [...tweetsData, ...secondBatch.data];
-      }
-    }
+    const tweetsData = firstBatch.data || [];
 
     console.log("Total fetched tweets count:", tweetsData.length);
     if (tweetsData.length > 0) {

@@ -45,11 +45,10 @@ export default function PromptEditorDialog({
   };
 
   // Fetch the prompt content when the dialog is opened
-  /* eslint-disable-next-line */
   useEffect(() => {
     if (isOpen) {
       fetchPromptContent();
-    }
+    } /* eslint-disable-next-line */
   }, [isOpen]);
 
   const handleSavePrompt = async () => {
