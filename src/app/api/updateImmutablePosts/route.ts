@@ -10,6 +10,7 @@ export async function GET() {
 
   try {
     await updateTimelinePosts(userId, start_time);
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error updating Immutable posts:", error);
     return NextResponse.json(
