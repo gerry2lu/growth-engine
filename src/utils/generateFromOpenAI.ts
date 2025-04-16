@@ -1,4 +1,7 @@
 import OpenAI from "openai";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 // Define the types for the tweet generation request
 export type GenerateTweetsRequest = {
@@ -93,6 +96,43 @@ export async function generateTweetsFromOpenAI(
   });
 
   try {
+    // STEP 0: Fetch exemplar tweets from the database based on tweet style
+    console.log("Fetching exemplar tweets for style:", selectedStyle.name);
+
+    // Map the tweet style to the database style
+    const dbStyleMapping: Record<string, string> = {
+      multiparagraph: "Multiple paras",
+      hookbullets: "Hook + list",
+      causeeffect: "Cause + effect 2 liner",
+      oneliner: "One liner",
+      parallelism: "Parallelism",
+      comparison: "Comparison",
+      catchphrase: "One liner", // Fallback for catchphrase
+    };
+
+    const dbStyle =
+      dbStyleMapping[tweetStyle as string] || dbStyleMapping.oneliner;
+
+    // Query the database for exemplar tweets
+    const exemplarTweets = await prisma.exemplarTweets.findMany({
+      where: {
+        tweet_style: dbStyle,
+      },
+      take: 5, // Get up to 5 examples
+    });
+
+    console.log(
+      `Found ${exemplarTweets.length} exemplar tweets for style: ${dbStyle}`
+    );
+
+    // Format the exemplar tweets for the prompt
+    const exemplarTweetsText = exemplarTweets
+      .map(
+        (tweet) =>
+          `Example ${tweet.tweet_style} tweet about ${tweet.content_topic}: "${tweet.tweet_text}"`
+      )
+      .join("\n\n");
+
     // STEP 1: Gather relevant information via web search
     console.log("Step 1: Gathering relevant information via web search...");
 
@@ -121,29 +161,32 @@ export async function generateTweetsFromOpenAI(
     const researchInfo = searchResponse.output_text || "";
     console.log("Research information gathered successfully");
 
-    // STEP 2: Generate tweets using the gathered information
-    console.log("Step 2: Generating tweets using gathered information...");
+    // STEP 2: Generate tweets using the gathered information and exemplar tweets
+    console.log(
+      "Step 2: Generating tweets using gathered information and exemplars..."
+    );
 
-    const tweetGenerationPrompt = `Based on the following research information:
+    // Build the prompt with exemplar tweets if available
+    let tweetGenerationPrompt = `Based on the following research information:\n\n${researchInfo}\n\n`;
 
-${researchInfo}
+    const exemplarTweetsPrompt = `Here are some successful examples of the tweet style I want you to emulate:\n\n${exemplarTweetsText}\n\n`;
 
-Generate 6 distinct tweets about ${customPrompt || topic} in the "${
-      selectedStyle.name
-    }" style.
-
-Description of this style: ${selectedStyle.description}
-Example of this style: "${selectedStyle.example}"
-
-For all tweets, follow these rules:
-- Ensure each tweet has high coherence with the topic
-- Do not use hashtags or emojis
-- Reference real metrics from the research information such as player count, investments, percentage growth, or time frames
-- Do not reference engagement metrics like likes or retweets
-- You may use crypto Twitter native lingo and acronyms
-- Prioritize brevity by making each sentence short and efficient
-- Limit each tweet to 280 characters
-- Separate each tweet with a "||"`;
+    tweetGenerationPrompt += `Generate 6 distinct tweets about ${
+      customPrompt || topic
+    } in the "${selectedStyle.name}" style.\n\nDescription of this style: ${
+      selectedStyle.description
+    }\n\n${exemplarTweetsPrompt}
+    \n\nFor all tweets, follow these rules:\n
+    - Ensure each tweet has high coherence with the topic\n
+    - Do not use hashtags\n
+    - Do not use emojis\n
+    - Do not use hyphens\n
+    - Reference real metrics from the research information such as player count, investments, percentage growth, or time frames\n
+    - Do not reference engagement metrics like likes or retweets\n
+    - You may use crypto Twitter native lingo and acronyms\n
+    - Prioritize brevity by making each sentence short and efficient\n
+    - Limit each tweet to 280 characters\n
+    - Separate each tweet with a "||"`;
 
     const tweetResponse = await openai.responses.create({
       model: "gpt-4.1",
@@ -156,7 +199,7 @@ For all tweets, follow these rules:
     // Process the tweets
     const tweets = generatedText
       .split("||") // Split by the separator
-      .map((tweet) => tweet.trim()) // Trim whitespace
+      .map((tweet) => tweet.trim()) // Trim whitespacex
       .filter((tweet) => tweet.length > 0); // Remove empty tweets
 
     return {

@@ -50,4 +50,15 @@ model SystemPrompts {
   name String @unique
   prompt String
 }
-  
+
+model ExemplarTweets {
+  id Int @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  tweet_text String
+  content_topic String
+  subtopic String
+  tweet_style String // I.e. Form
+  hook_value String
+  isThread Boolean @default(false)
+}  
+
