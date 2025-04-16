@@ -6,11 +6,11 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient({ log: ["query", "info", "warn", "error"] }); // Enable Prisma logs
 
-export async function updateTimelinePosts(userId: string): Promise<void> {
+export async function updateTimelinePosts(
+  userId: string,
+  startTime: string
+): Promise<void> {
   const access_token = await getAccessToken();
-
-  // Set the start date to March 4, 2025
-  const startTime = "2025-03-04T00:00:00Z";
 
   let allTweets: any[] = [];
   let nextToken: string | undefined = undefined;

@@ -52,7 +52,7 @@ export default function Home() {
   // };
 
   // const testGetEngagement = async () => {
-  //   const response = await fetch("/api/get-engagement");
+  //   const response = await fetch("/api/updateImmutablePosts");
   //   const data = await response.json();
   //   console.log(data);
   // };
@@ -74,10 +74,10 @@ export default function Home() {
           setIsAuthenticated={setIsAuthenticated}
         />
         {/* <button
-          onClick={testDailySlackUpdate}
+          onClick={testGetEngagement}
           className="bg-white mt-2 text-black py-2 px-4 rounded-3xl hover:bg-gray-300"
         >
-          Send Slack Update
+          Test Update Immutable Posts
         </button> */}
         {/* {email && (
           <p className="text-gray-300 mt-2 ml-2 text-xs max-w-20">
