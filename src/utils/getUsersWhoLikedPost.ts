@@ -1,5 +1,3 @@
-/* eslint-disable  @typescript-eslint/no-explicit-any */
-
 import { getAccessToken } from "./getAccessToken";
 import { getRobbieOAuthHeader } from "./authRobbie";
 

@@ -1,5 +1,3 @@
-/* eslint-disable  @typescript-eslint/no-explicit-any */
-
 // app/api/send-slack-message/route.ts
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";

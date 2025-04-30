@@ -1,5 +1,3 @@
-/* eslint-disable  @typescript-eslint/no-explicit-any */
-
 // utils/updateTimelinePosts.ts
 // import { getAccessToken } from "./getAccessToken";
 import { PrismaClient } from "@prisma/client";
