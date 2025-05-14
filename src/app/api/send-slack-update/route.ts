@@ -1,12 +1,11 @@
 // app/api/send-slack-message/route.ts
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { Trends } from "@prisma/client";
 import Anthropic from "@anthropic-ai/sdk";
 import { trendsWhiteList } from "@/utils/getTrendsWhiteList";
 import { getAccessToken } from "@/utils/getAccessToken";
 
-const prisma = new PrismaClient();
 
 export async function GET() {
   try {

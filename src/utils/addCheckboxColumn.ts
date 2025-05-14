@@ -1,4 +1,3 @@
-import { GoogleSpreadsheet } from "google-spreadsheet";
 import { JWT } from "google-auth-library";
 import { sheets_v4, drive_v3 } from "googleapis";
 
@@ -83,6 +82,7 @@ export async function addCheckboxColumn(
     const drive = new drive_v3.Drive({ auth });
     const sheets = new sheets_v4.Sheets({ auth });
 
+    // Get spreadsheet ID
     const fileList = await drive.files.list({
       q: `name='${finalConfig.spreadsheetName}' and mimeType='application/vnd.google-apps.spreadsheet'`,
       fields: "files(id)",
@@ -98,21 +98,45 @@ export async function addCheckboxColumn(
       throw new Error("Failed to get spreadsheet ID");
     }
 
-    const doc = new GoogleSpreadsheet(spreadsheetId, auth);
-    await doc.loadInfo();
+    // Get worksheet metadata without loading all cells
+    const sheetsResponse = await sheets.spreadsheets.get({
+      spreadsheetId,
+      fields: "sheets.properties",
+    });
 
-    const worksheet = doc.sheetsByTitle[finalConfig.worksheetName];
-    if (!worksheet) {
+    if (
+      !sheetsResponse.data.sheets ||
+      sheetsResponse.data.sheets.length === 0
+    ) {
+      throw new Error("No worksheets found in the spreadsheet");
+    }
+
+    // Find the target worksheet
+    const worksheetProperties = sheetsResponse.data.sheets.find(
+      (sheet) => sheet.properties?.title === finalConfig.worksheetName
+    )?.properties;
+
+    if (!worksheetProperties) {
       throw new Error(`Worksheet '${finalConfig.worksheetName}' not found`);
     }
 
-    await worksheet.loadCells();
+    const sheetId = worksheetProperties.sheetId;
 
+    // Determine column index based on placement
     let columnIndex: number;
     if (finalConfig.placement === "end") {
-      columnIndex = worksheet.columnCount + 1;
+      // Get the number of columns in the sheet
+      const dimensionsResponse = await sheets.spreadsheets.get({
+        spreadsheetId,
+        ranges: [finalConfig.worksheetName],
+        fields: "sheets.properties.gridProperties",
+      });
+
+      const gridProps =
+        dimensionsResponse.data.sheets?.[0].properties?.gridProperties;
+      columnIndex = gridProps?.columnCount || 1;
     } else if (finalConfig.placement === "start") {
-      columnIndex = 1;
+      columnIndex = 0; // 0-indexed in the API
     } else if (
       finalConfig.placement === "after_column" &&
       finalConfig.columnLetter
@@ -120,11 +144,12 @@ export async function addCheckboxColumn(
       columnIndex =
         finalConfig.columnLetter.toUpperCase().charCodeAt(0) -
         "A".charCodeAt(0) +
-        2;
+        1; // Convert to 0-indexed
     } else {
-      throwError("Invalid placement option or missing column letter");
+      throw new Error("Invalid placement option or missing column letter");
     }
 
+    // Insert a new column
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId,
       requestBody: {
@@ -132,10 +157,10 @@ export async function addCheckboxColumn(
           {
             insertDimension: {
               range: {
-                sheetId: worksheet.sheetId,
+                sheetId,
                 dimension: "COLUMNS",
-                startIndex: columnIndex - 1,
-                endIndex: columnIndex,
+                startIndex: columnIndex,
+                endIndex: columnIndex + 1,
               },
             },
           },
@@ -143,23 +168,34 @@ export async function addCheckboxColumn(
       },
     });
 
-    const headerCell = worksheet.getCell(0, columnIndex - 1);
-    headerCell.value = finalConfig.newColumnName;
-
-    // Format the date as MMM DD YYYY
+    // Format the date
     const formattedDate = postDate.toLocaleDateString("en-US", {
-      month: "short", // "MMM"
-      day: "2-digit", // "DD"
-      year: "numeric", // "YYYY"
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
     });
 
-    // Add the formatted date to row 1 (index 1)
-    const dateCell = worksheet.getCell(1, columnIndex - 1);
-    dateCell.value = formattedDate;
+    // Create a batch update for header, date, and URL cells
+    const columnLetter = String.fromCharCode(65 + columnIndex); // Convert index to letter (A, B, C...)
 
-    const urlCell = worksheet.getCell(2, columnIndex - 1);
-    urlCell.value = tweetUrl;
+    // Prepare values for the header, date, and URL
+    const headerValues = [
+      [finalConfig.newColumnName], // Header (row 1)
+      [formattedDate], // Date (row 2)
+      [tweetUrl], // URL (row 3)
+    ];
 
+    // Update the header, date, and URL in a single batch
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${finalConfig.worksheetName}!${columnLetter}1:${columnLetter}3`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: headerValues,
+      },
+    });
+
+    // Set data validation for the column (checkboxes)
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId,
       requestBody: {
@@ -167,11 +203,12 @@ export async function addCheckboxColumn(
           {
             setDataValidation: {
               range: {
-                sheetId: worksheet.sheetId,
+                sheetId,
                 startRowIndex: 3,
-                endRowIndex: worksheet.rowCount,
-                startColumnIndex: columnIndex - 1,
-                endColumnIndex: columnIndex,
+                endRowIndex:
+                  worksheetProperties.gridProperties?.rowCount || 1000,
+                startColumnIndex: columnIndex,
+                endColumnIndex: columnIndex + 1,
               },
               rule: {
                 condition: {
@@ -185,27 +222,51 @@ export async function addCheckboxColumn(
       },
     });
 
+    // If there are rows to check, update them in a single batch
     if (checkedRows.length > 0) {
-      const updates = checkedRows
-        .filter((row) => row >= 4 && row <= worksheet.rowCount)
-        .map((row) => ({
-          row: row - 1,
-          col: columnIndex - 1,
-          value: true,
+      // Filter valid rows
+      const validRows = checkedRows.filter(
+        (row) =>
+          row >= 4 &&
+          row <= (worksheetProperties.gridProperties?.rowCount || 1000)
+      );
+
+      if (validRows.length > 0) {
+        // Create a sparse update for checked cells
+        const requests = validRows.map((row) => ({
+          updateCells: {
+            rows: [
+              {
+                values: [
+                  {
+                    userEnteredValue: {
+                      boolValue: true,
+                    },
+                  },
+                ],
+              },
+            ],
+            fields: "userEnteredValue",
+            start: {
+              sheetId,
+              rowIndex: row - 1, // Convert to 0-indexed
+              columnIndex: columnIndex,
+            },
+          },
         }));
 
-      for (const update of updates) {
-        const cell = worksheet.getCell(update.row, update.col);
-        cell.value = update.value;
+        // Perform the batch update
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          requestBody: {
+            requests,
+          },
+        });
+
+        console.log(
+          `Added checkbox column '${finalConfig.newColumnName}' to worksheet '${finalConfig.worksheetName}' with ${validRows.length} rows checked`
+        );
       }
-    }
-
-    await worksheet.saveUpdatedCells();
-
-    if (checkedRows.length > 0) {
-      console.log(
-        `Added checkbox column '${finalConfig.newColumnName}' to worksheet '${finalConfig.worksheetName}' with ${checkedRows.length} rows checked`
-      );
     }
   } catch (error) {
     console.error(

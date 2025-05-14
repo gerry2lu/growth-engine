@@ -1,8 +1,6 @@
 // utils/updateTimelinePosts.ts
 // import { getAccessToken } from "./getAccessToken";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient({ log: ["query", "info", "warn", "error"] }); // Enable Prisma logs
+import { prisma } from "@/lib/prisma";
 
 export async function updateRobbieTimelinePosts(userId: string): Promise<void> {
   const access_token = process.env.R_BEARER_TOKEN;

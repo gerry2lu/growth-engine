@@ -1,8 +1,6 @@
 // utils/updateTimelinePosts.ts
 import { getAccessToken } from "./getAccessToken";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient({ log: ["query", "info", "warn", "error"] }); // Enable Prisma logs
+import { prisma } from "@/lib/prisma";
 
 export async function updateTimelinePosts(
   userId: string,

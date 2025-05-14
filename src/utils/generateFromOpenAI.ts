@@ -1,7 +1,5 @@
 import OpenAI from "openai";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 // Define the types for the tweet generation request
 export type GenerateTweetsRequest = {

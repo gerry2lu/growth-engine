@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 // import { updateTimelinePosts } from "@/utils/updateTimelinePosts";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { getUsersWhoLikedPost } from "@/utils/getUsersWhoLikedPost";
 import { findMatchingUsers } from "@/utils/getMatchingKOLs";
 import { addCheckboxColumn } from "@/utils/addCheckboxColumn";
-
-const prisma = new PrismaClient();
 
 export async function GET() {
   // const userId = "1233171399872638976"; // WILL CONVERT TO ENV VARIABLE

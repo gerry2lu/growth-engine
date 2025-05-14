@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { getUsersWhoLikedPost } from "@/utils/getUsersWhoLikedPost";
 import { findMatchingUsers } from "@/utils/getMatchingKOLs";
 import { addCheckboxColumn } from "@/utils/addCheckboxColumn";
-
-const prisma = new PrismaClient();
 
 export async function GET() {
   const userId = process.env.ROBBIE_X_ID;

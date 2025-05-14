@@ -1,7 +1,5 @@
 import { addRobbieTweetRow } from "./addRobbieTweetRow";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 async function updateRobbieRatings() {
   // Get posts from RobbiePosts table which is_added_to_spreadsheet = false and createdAt > 14 days ago and likes >= 20

@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { getAccessToken } from "@/utils/getAccessToken";
 import { trendsWhiteList } from "@/utils/getTrendsWhiteList";
-
-const prisma = new PrismaClient();
 
 // Example data returned from Twitter API
 // {
