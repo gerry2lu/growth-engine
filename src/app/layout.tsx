@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Roboto } from "next/font/google";
+import NavBar from "@/components/NavBar";
 
 const bodyPrimary = Roboto({
   weight: ["400", "500", "700"],
@@ -11,8 +12,8 @@ const bodyPrimary = Roboto({
 });
 
 export const metadata: Metadata = {
-  title: "Tweet Recommendation Engine",
-  description: "Generate tweets using AI and Twitter data.",
+  title: "Growth Engine",
+  description: "Your all in one agentic growth platform",
 };
 
 export default function RootLayout({
@@ -22,8 +23,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${bodyPrimary.className} bg-gray-950 text-black`}>
-        <main className="min-h-screen p-4">{children}</main>
+      <body className={`${bodyPrimary.className} bg-white text-gray-800`}>
+        <NavBar />
+        <main className="min-h-screen">{children}</main>
       </body>
     </html>
   );

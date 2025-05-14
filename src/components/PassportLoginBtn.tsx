@@ -47,7 +47,7 @@ export default function PassportLoginButton(props: PassportLoginButtonProps) {
     return (
       <button
         onClick={logout}
-        className="flex items-center bg-gray-100 text-black py-3 px-12 rounded-3xl cursor-pointer hover:border-purple-600 border-2 border-gray-100"
+        className="flex items-center border border-black bg-white text-black py-2 px-12 rounded-3xl cursor-pointer hover:bg-gray-100"
       >
         <Image
           src="/passportWallet.png"
@@ -64,7 +64,7 @@ export default function PassportLoginButton(props: PassportLoginButtonProps) {
   return (
     <button
       onClick={handleLogin}
-      className="flex items-center bg-gray-100 text-black py-2 px-4 rounded-3xl cursor-pointer hover:border-purple-600 border-2 border-gray-100"
+      className="flex items-center border border-black bg-white text-black py-2 px-5 rounded-3xl cursor-pointer hover:bg-gray-100"
     >
       <Image
         src="/passportWallet.png"
@@ -73,7 +73,7 @@ export default function PassportLoginButton(props: PassportLoginButtonProps) {
         width={28}
         height={28}
       />
-      Sign in with Immutable
+      Passport Sign In
     </button>
   );
 }

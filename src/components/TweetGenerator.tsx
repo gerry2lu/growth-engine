@@ -156,7 +156,7 @@ const TweetGenerator = (props: TweetGeneratorProps) => {
     if (customMetric.trim() === "") return;
 
     // Create a unique ID for the custom metric
-    const newId = `custom-${Date.now()}`;
+    const newId = `custom-${metrics.length}`;
 
     // Add the new metric to the list
     setMetrics([
